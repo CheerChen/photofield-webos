@@ -10,7 +10,11 @@
 (function () {
   const VIEWPORT_W = 1920;
   const VIEWPORT_H = 1080;
-  const GRID_IMAGE_H = 220; // wall layout row height for the TV grid
+  // WALL layout scales rows to ~1.7% of viewport width (it's a zoomable tile
+  // map, image_height is ignored). FLEX is the justified-gallery layout and
+  // honors image_height — 300px rows give ~29 photos per 1080p screen.
+  const GRID_LAYOUT = "FLEX";
+  const GRID_IMAGE_H = 300;
   const SCENE_POLL_MS = 800;
   const SCENE_POLL_MAX = 120; // ~96s worst case for a fresh index
 
@@ -37,6 +41,7 @@
           viewport_width: VIEWPORT_W,
           viewport_height: VIEWPORT_H,
           image_height: GRID_IMAGE_H,
+          layout: GRID_LAYOUT,
         }),
       });
       // Scene layout is async (202): poll until the layout settles.
@@ -62,7 +67,8 @@
       // Reuse a matching scene the server already has (e.g. from the web UI).
       const list = await api(
         "/scenes?collection_id=" + encodeURIComponent(collectionId) +
-          "&viewport_width=" + VIEWPORT_W + "&image_height=" + GRID_IMAGE_H
+          "&viewport_width=" + VIEWPORT_W + "&image_height=" + GRID_IMAGE_H +
+          "&layout=" + GRID_LAYOUT
       );
       const existing = (list.items || []).find((s) => !s.loading && !s.stale);
       const scene = existing || (await createScene(collectionId));
@@ -163,8 +169,19 @@
       },
 
       previewUrl(photo, width) {
+        // Prefer a pre-generated variant near the target size: indexing
+        // already produced e.g. ffmpeg-1280x1280-in, so the server just
+        // reads a file instead of resizing on the pi's CPU.
+        const want = width || 1920;
+        const big = photo.thumbnails
+          .filter((t) => t.width >= want * 0.6)
+          .sort((a, b) => a.width - b.width)[0];
+        if (big) {
+          return base + "/api/files/" + photo.id + "/variants/" +
+            encodeURIComponent(big.name) + "/" + encodeURIComponent(big.filename);
+        }
         return base + "/api/files/" + photo.id + "/previews/" +
-          encodeURIComponent(photo.filename) + "?width=" + (width || 1920);
+          encodeURIComponent(photo.filename) + "?width=" + want;
       },
 
       originalUrl(photo) {
