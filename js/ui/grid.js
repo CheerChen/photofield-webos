@@ -44,7 +44,7 @@
       if (it.photo.isVideo) {
         const badge = document.createElement("span");
         badge.className = "video-badge";
-        badge.textContent = "▶";
+        badge.innerHTML = window.Icons.play;
         cell.appendChild(badge);
       }
       canvas.appendChild(cell);

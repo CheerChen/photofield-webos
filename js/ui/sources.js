@@ -14,12 +14,12 @@
       const count = counts[s.id];
       card.innerHTML =
         '<div class="source-card-name">' + s.name +
-        (s.locked ? ' <span class="source-card-lock">🔒</span>' : "") +
+        (s.locked ? ' <span class="source-card-lock">' + window.Icons.lock + "</span>" : "") +
         "</div>" +
         '<div class="source-card-count">' +
         (count === undefined ? "…" : count.toLocaleString() + " 张") +
         "</div>" +
-        '<div class="source-card-play">⏵ 键播放</div>';
+        '<div class="source-card-play">' + window.Icons.play + " 播放</div>";
       row.appendChild(card);
     });
   }
