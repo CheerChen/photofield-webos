@@ -16,22 +16,28 @@
   async function show() {
     if (loading) return;
     loading = true;
+    const at = index;
     try {
-      const photo = await client.photoAt(collection.id, index);
-      if (!photo) return;
+      const photo = await client.photoAt(collection.id, at);
+      if (!photo) { loading = false; return; }
       const stage = $("viewer-stage");
       stage.innerHTML = "";
       const img = document.createElement("img");
       img.src = client.previewUrl(photo, 1920);
       stage.appendChild(img);
+      // Meta uses `at` (the index actually loaded) so the counter always
+      // matches the displayed photo, never the latest key press.
       $("viewer-meta").textContent =
         fmtDate(photo.takenAt) + "  " + photo.filename +
-        "  ·  " + (index + 1) + " / " + count.toLocaleString();
+        "  ·  " + (at + 1) + " / " + count.toLocaleString();
     } catch (e) {
       window.App.toast("加载失败");
-    } finally {
-      loading = false;
     }
+    loading = false;
+    // A key press during the await updated index; reload so the last
+    // requested photo is shown instead of leaving the viewer stuck on a
+    // stale frame with a mismatched counter.
+    if (index !== at) show();
   }
 
   window.ViewerScreen = {
@@ -55,9 +61,9 @@
         show();
       } else if (key === "play" || key === "green") {
         $("screen-viewer").hidden = true;
-        window.Store.set("lastCollection", collection.id);
-        window.KioskScreen.open(source, [collection.id], {
+        window.Playback.start(source, [collection.id], {
           start: { collectionId: collection.id, index },
+          rememberCollection: collection.id,
         });
       } else if (key === "back" || key === "ok") {
         $("screen-viewer").hidden = true;
