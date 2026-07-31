@@ -90,6 +90,17 @@ html, body {
   color: var(--dim);
 }
 .source-card-lock { font-size: 28px; }
+.source-empty {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  font-size: 40px;
+  font-weight: 600;
+  color: var(--dim);
+}
+.source-empty-hint { font-size: 26px; font-weight: 400; }
 
 /* ---------- collection cards ---------- */
 
@@ -293,6 +304,21 @@ html, body {
   color: var(--dim);
   background: #000;
 }
+.kiosk-hint {
+  position: absolute;
+  bottom: 56px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 14px 28px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.6);
+  color: #c8cdd8;
+  font-size: 22px;
+  opacity: 1;
+  transition: opacity 1s ease;
+  pointer-events: none;
+}
+.kiosk-hint.fade { opacity: 0; }
 
 /* ---------- modals ---------- */
 
@@ -345,6 +371,31 @@ html, body {
 }
 .pin-key.focused { border-color: var(--focus); }
 
+/* ---------- IP input (reuses pin-pad grid) ---------- */
+
+.ipinput-display {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 40px;
+  font-size: 48px;
+  font-weight: 700;
+  letter-spacing: 2px;
+}
+.ipinput-seg {
+  min-width: 120px;
+  text-align: center;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: var(--panel-2);
+  border: 3px solid transparent;
+  color: var(--text);
+}
+.ipinput-seg.focused { border-color: var(--focus); }
+.ipinput-seg.empty { color: var(--dim); }
+.ipinput-dot { color: var(--dim); }
+
 .settings-list { display: flex; flex-direction: column; gap: 20px; }
 .settings-row {
   display: flex;
@@ -373,4 +424,14 @@ html, body {
   padding: 18px 36px;
   font-size: 24px;
   z-index: 30;
+}
+/* Critical errors get their own slot (top-center, accent border) and a
+ * longer lifetime so a routine toast (e.g. track name) cannot overwrite a
+ * "playback stopped" message the user needs to read. */
+.toast-error {
+  bottom: auto;
+  top: 40px;
+  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: 600;
 }

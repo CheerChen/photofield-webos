@@ -14,6 +14,7 @@
         <span class="topbar-sub">选择源</span>
       </header>
       <div class="source-row" id="source-row"></div>
+      <div class="source-empty" id="source-empty" hidden>未找到服务器<br /><span class="source-empty-hint">按蓝键检查地址并重扫</span></div>
       <footer class="hintbar">
         <span><b>OK</b> 浏览</span>
         <span><b><svg class="icon" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></b> 播放整源</span>
@@ -44,6 +45,7 @@
       <footer class="hintbar">
         <span><b>OK</b> 查看</span>
         <span><b><svg class="icon" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></b> 从此播放</span>
+        <span><b>红/黄</b> 翻页</span>
         <span><b>返回</b> 相册列表</span>
       </footer>
     </section>
@@ -74,6 +76,7 @@
         <div class="kiosk-name" id="kiosk-name"></div>
       </div>
       <div class="kiosk-loading" id="kiosk-loading" hidden>加载中…</div>
+      <div class="kiosk-hint" id="kiosk-hint" hidden>彩色键选 Lofi 列表 · 上下键切歌 · 再按同色键关闭</div>
       <div class="kiosk-music" id="kiosk-music" hidden><span id="kiosk-music-dot"></span><span id="kiosk-music-name"></span></div>
       <div class="kiosk-paused" id="kiosk-paused" hidden><svg class="icon" viewBox="0 0 24 24"><path d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg> 已暂停</div>
     </section>
@@ -96,21 +99,39 @@
       <div class="modal-card">
         <h2 class="modal-title">设置</h2>
         <div class="settings-list" id="settings-list"></div>
-        <p class="modal-hint">←→ 调整 · 返回关闭</p>
+        <p class="modal-hint">←→ 调整 · OK 选择 · 返回关闭</p>
+      </div>
+    </div>
+
+    <!-- IP input overlay (reuses the pin-pad digit grid) -->
+    <div class="modal" id="ipinput-overlay" hidden>
+      <div class="modal-card">
+        <h2 class="modal-title">服务器地址</h2>
+        <div class="ipinput-display" id="ipinput-display">
+          <span class="ipinput-seg"></span><span class="ipinput-dot">.</span>
+          <span class="ipinput-seg"></span><span class="ipinput-dot">.</span>
+          <span class="ipinput-seg"></span><span class="ipinput-dot">.</span>
+          <span class="ipinput-seg"></span>
+        </div>
+        <div class="pin-pad" id="ipinput-pad"></div>
+        <p class="modal-hint">OK 输入数字 · 绿键下一段 · 红键删除 · 返回取消</p>
       </div>
     </div>
 
     <div class="toast" id="toast" hidden></div>
+    <div class="toast toast-error" id="toast-error" hidden></div>
 
     <script src="js/core/store.js"></script>
     <script src="js/core/keys.js"></script>
     <script src="js/core/player.js"></script>
+    <script src="js/core/playback.js"></script>
     <script src="js/core/music.js"></script>
     <script src="js/core/screensaver.js"></script>
     <script src="js/clients/source.js"></script>
     <script src="js/clients/photofield.js"></script>
     <script src="js/ui/icons.js"></script>
     <script src="js/ui/pin.js"></script>
+    <script src="js/ui/ipinput.js"></script>
     <script src="js/ui/sources.js"></script>
     <script src="js/ui/collections.js"></script>
     <script src="js/ui/grid.js"></script>

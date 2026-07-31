@@ -110,8 +110,7 @@
         window.GridScreen.open(source, collections[focusIdx]);
       } else if (key === "play" || key === "green") {
         const c = collections[focusIdx];
-        window.Store.set("lastCollection", c.id);
-        window.KioskScreen.open(source, [c.id]);
+        window.Playback.start(source, [c.id], { rememberCollection: c.id });
       } else if (key === "back") {
         coverGen++;
         return window.App.show("sources");

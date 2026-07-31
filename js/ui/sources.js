@@ -8,18 +8,37 @@
   function render() {
     const row = $("source-row");
     row.innerHTML = "";
-    window.Sources.all().forEach((s, i) => {
+    const list = window.Sources.all();
+    $("source-empty").hidden = list.length > 0;
+    list.forEach((s, i) => {
       const card = document.createElement("div");
       card.className = "source-card" + (i === focusIdx ? " focused" : "");
+
+      const name = document.createElement("div");
+      name.className = "source-card-name";
+      name.textContent = s.name;
+      if (s.locked) {
+        name.appendChild(document.createTextNode(" "));
+        const lock = document.createElement("span");
+        lock.className = "source-card-lock";
+        lock.innerHTML = window.Icons.lock;
+        name.appendChild(lock);
+      }
+
+      const countEl = document.createElement("div");
+      countEl.className = "source-card-count";
       const count = counts[s.id];
-      card.innerHTML =
-        '<div class="source-card-name">' + s.name +
-        (s.locked ? ' <span class="source-card-lock">' + window.Icons.lock + "</span>" : "") +
-        "</div>" +
-        '<div class="source-card-count">' +
-        (count === undefined ? "…" : count === -1 ? "连接失败" : count.toLocaleString() + " 张") +
-        "</div>" +
-        '<div class="source-card-play">' + window.Icons.play + " 播放</div>";
+      countEl.textContent =
+        count === undefined ? "…" : count === -1 ? "连接失败" : count.toLocaleString() + " 张";
+
+      const play = document.createElement("div");
+      play.className = "source-card-play";
+      play.innerHTML = window.Icons.play;
+      play.appendChild(document.createTextNode(" 播放"));
+
+      card.appendChild(name);
+      card.appendChild(countEl);
+      card.appendChild(play);
       row.appendChild(card);
     });
   }

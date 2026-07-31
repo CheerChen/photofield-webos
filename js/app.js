@@ -3,7 +3,6 @@
 (function () {
   const $ = (id) => document.getElementById(id);
   const SCREENS = ["sources", "collections", "grid", "viewer", "kiosk"];
-  let toastTimer = null;
 
   window.App = {
     show(name) {
@@ -25,12 +24,18 @@
       window.close();
     },
 
-    toast(msg, ms) {
-      const el = $("toast");
+    toast(msg, ms, kind) {
+      // kind === "error" uses a separate top-center slot with a longer
+      // default lifetime, so a routine toast (track name, "扫描完成") can
+      // not overwrite a critical "playback stopped" message.
+      const el = kind === "error" ? $("toast-error") : $("toast");
       el.textContent = msg;
       el.hidden = false;
-      clearTimeout(toastTimer);
-      toastTimer = setTimeout(() => (el.hidden = true), ms || 3000);
+      clearTimeout(el._toastTimer);
+      el._toastTimer = setTimeout(
+        () => (el.hidden = true),
+        ms || (kind === "error" ? 6000 : 3000)
+      );
     },
   };
 
@@ -41,6 +46,7 @@
     window.Keys.bind("viewer", (e) => window.ViewerScreen.onKey(e));
     window.Keys.bind("kiosk", (e) => window.KioskScreen.onKey(e));
     window.Keys.bind("pin", (e) => window.Pin.onKey(e));
+    window.Keys.bind("ipinput", (e) => window.IpInput.onKey(e));
     window.Keys.bind("settings", (e) => window.SettingsScreen.onKey(e));
 
     $("grid-viewport").addEventListener("scroll", (e) =>
@@ -58,20 +64,8 @@
     if (window.Store.get("startup") === "kiosk" && window.Store.get("lastSource")) {
       const source = window.Sources.byId(window.Store.get("lastSource"));
       if (source) {
-        // Locked sources still ask for the PIN even on kiosk autostart.
-        window.Pin.gate(source, async () => {
-          try {
-            const client = window.Sources.client(source);
-            const cols = await client.collections();
-            const lastCol = window.Store.get("lastCollection");
-            const ids = lastCol && cols.some((c) => c.id === lastCol)
-              ? [lastCol]
-              : cols.map((c) => c.id);
-            window.KioskScreen.open(source, ids);
-          } catch (e) {
-            window.App.toast("无法连接 " + source.name);
-            window.SourcesScreen.open();
-          }
+        window.Playback.resume(source, {
+          onError: () => window.SourcesScreen.open(),
         });
         return;
       }

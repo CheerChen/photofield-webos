@@ -175,8 +175,7 @@
       else if (key === "ok" && focused) {
         window.ViewerScreen.open(source, collection, focused.i);
       } else if ((key === "play" || key === "green") && focused) {
-        window.Store.set("lastCollection", collection.id);
-        window.KioskScreen.open(source, [collection.id], {
+        window.Playback.start(source, [collection.id], {
           start: { collectionId: collection.id, index: focused.i },
         });
       } else if (key === "back") {
