@@ -1,0 +1,56 @@
+# Changelog
+
+All notable changes to this project are documented in this file.
+
+## [0.3.0] - 2026-08-01
+
+### Added
+
+- Automatically discover Photofield instances by scanning the configured host on ports 8000–8010, with cached results and manual rescanning.
+- Add configurable kiosk photo fit modes: portrait ambience, contain, and cover.
+- Add configurable kiosk playback order: shuffle or sequential.
+- Add colour-key Lofi playlists with track navigation and an on-screen playback indicator.
+- Inhibit the webOS screensaver while kiosk playback is active.
+
+### Changed
+
+- Improve source count refreshes and connection-failure feedback.
+- Select image variants based on the target render size.
+- Build slideshow collection counts in parallel and retry transient Photofield server errors.
+- Stop slideshow playback after repeated server errors instead of retrying indefinitely.
+- Remove generated IPK packages from version control.
+
+## [0.2.0] - 2026-07-31
+
+### Added
+
+- Display collections as a four-column cover-card picker.
+- Add inline SVG icons for webOS environments without suitable Unicode glyphs.
+- Expand Wallpaper source subdirectories into separate collections.
+
+### Changed
+
+- Load collection covers sequentially to reduce server load.
+- Correct fixed-height collection grid sizing to prevent cover clipping.
+
+## [0.1.2] - 2026-07-31
+
+### Changed
+
+- Move kiosk playback controls from unreliable long-press OK handling to media keys.
+- Support play, pause, rewind, fast-forward, and stop keys in kiosk mode.
+- Temporarily remove the X source PIN lock and its settings entry.
+
+## [0.1.1] - 2026-07-31
+
+### Changed
+
+- Use FLEX layout for denser photo grids.
+- Prefer pre-generated image variants for grid previews.
+
+## [0.1.0] - 2026-07-31
+
+### Added
+
+- Initial webOS photo client with source selection, collection browsing, photo grid, viewer, and kiosk slideshow modes.
+- Photofield client adapter, remote-key navigation, persistent settings, PIN support, tests, and IPK packaging script.

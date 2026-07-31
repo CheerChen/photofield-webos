@@ -1,34 +1,33 @@
 # Photofield for webOS
 
-LG webOS 电视相册：浏览 + Kiosk 幻灯片双模式，数据源为自托管 [photofield](https://github.com/SmilyOrg/photofield) 实例。
+LG webOS 电视相册客户端，提供浏览和 Kiosk 幻灯片模式，数据源为自托管 [Photofield](https://github.com/SmilyOrg/photofield) 实例。
+
+版本变更见 [CHANGELOG.md](CHANGELOG.md) 和 [CHANGELOG.zh-CN.md](CHANGELOG.zh-CN.md)。
 
 ## 架构
 
 ```
 TV app（file:// 直连，无网关）
-  js/clients/source.js       源注册表 + client 契约
-  js/clients/photofield.js   photofield 适配（scene 生命周期封装）
+  js/clients/source.js       源发现、缓存与 client 契约
+  js/clients/photofield.js   Photofield 适配（scene 生命周期封装）
   js/core/player.js          幻灯片引擎（3 图内存窗口）
   js/ui/                     sources / collections / grid / viewer / kiosk / pin / settings
 ```
 
-源契约：`collections() / photoCount() / photoAt() / slice() / thumbUrl() / previewUrl() / originalUrl()`。换上游（如 pigallery2）= 新增一个实现契约的 client 模块。
+源契约：`collections() / photoCount() / photoAt() / slice() / thumbUrl() / previewUrl() / originalUrl()`。如需接入其他上游服务，可新增一个实现该契约的 client 模块。
 
-### 当前源（硬编码于 source.js）
+## 服务器发现
 
-| 源 | endpoint | 锁定 |
-|---|---|---|
-| DCIM | http://192.168.0.110:8000 | 否 |
-| X | http://192.168.0.110:8001 | 否 |
-| Wallpaper | http://192.168.0.110:8002 | 否 |
+应用启动时会扫描已配置服务器的 `8000–8010` 端口，并将响应正常的 Photofield 实例显示为照片源。默认服务器地址为 `192.168.0.110`；可在设置页调整地址或重新扫描。扫描结果会缓存，以便下次启动时先显示已有照片源。
 
 ## 操作
 
-- 源选择页：OK 浏览，**长按 OK** 直接 Kiosk 播放整源，蓝键设置
-- 相册列表：OK 浏览，长按 OK 播放该相册
-- 网格：方向键移动焦点（服务端 wall 布局 + 最近邻导航），OK 全屏，长按 OK 从当前位置顺序播放
-- Kiosk：OK 暂停，←→ 手动切换，↑ 隐藏信息层，红 / 绿 / 黄 / 蓝键切换四首 Lofi，重复按当前颜色关闭音乐，返回退出
-- 设置：启动行为、播放间隔、相片填充（竖图氛围 / 完整显示 / 裁切填满）、播放顺序（随机 / 顺序）
+- 源选择页：方向键切换照片源；OK 浏览；播放键或绿键播放整个照片源；蓝键打开设置。
+- 相册列表：方向键移动焦点；OK 浏览相册；播放键或绿键播放当前相册。
+- 网格：方向键按服务端 wall 布局移动焦点；OK 打开查看器；播放键或绿键从当前照片开始播放，后续顺序由播放设置决定。
+- 查看器：左右键切换照片；OK 或返回键回到网格；播放键或绿键从当前照片开始播放。
+- Kiosk：OK、播放键或暂停键暂停或继续；左右键或快退、快进键切换照片；红、绿、黄、蓝键选择 Lofi 播放列表，再次按当前颜色键关闭音乐；上、下键切换当前列表的上一首或下一首；停止键或返回键退出。
+- 设置：启动行为、播放间隔、相片填充、播放顺序、服务器地址和重新扫描实例。
 
 ## 开发
 
@@ -36,6 +35,8 @@ TV app（file:// 直连，无网关）
 npm run check          # 语法检查 + 单元测试
 scripts/package.sh     # 打 IPK（需要 ares-cli）
 ```
+
+生成的 IPK 已被 `.gitignore` 忽略，应作为本地构建产物或发布附件处理。
 
 TV 调试（root + devmode，见 commit 历史与 webos-root-web-debug 笔记）：
 
