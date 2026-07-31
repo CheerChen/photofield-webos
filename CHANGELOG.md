@@ -2,6 +2,24 @@
 
 All notable changes to this project are documented in this file.
 
+## [Unreleased]
+
+### Added
+
+- Add full IPv4 address entry in Settings.
+- Add red/yellow key paging for large photo grids.
+- Add refreshed app icons and splash artwork, with SVG source files for regeneration.
+- Show a short Lofi control hint when kiosk playback starts.
+
+### Changed
+
+- Centralize kiosk launch and resume handling so every playback entry applies the same PIN gate and playback memory rules.
+- Preserve cached sources when a discovery scan finds no reachable instances, and show an actionable empty state when no source is available.
+- Cache recent photo metadata, defer scene creation, and preload kiosk images before crossfading.
+- Render remote source and collection names as text nodes instead of HTML.
+- Keep the viewer aligned with the latest navigation input while an image is loading.
+- Display critical playback failures separately from routine notifications.
+
 ## [0.3.0] - 2026-08-01
 
 ### Added
