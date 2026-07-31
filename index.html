@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Photofield — webOS</title>
+    <link rel="stylesheet" href="css/app.css" />
+  </head>
+  <body>
+    <!-- Source selection -->
+    <section class="screen" id="screen-sources" hidden>
+      <header class="topbar">
+        <h1 class="topbar-title">Photofield</h1>
+        <span class="topbar-sub">选择源</span>
+      </header>
+      <div class="source-row" id="source-row"></div>
+      <footer class="hintbar">
+        <span><b>OK</b> 浏览</span>
+        <span><b>长按 OK</b> 播放</span>
+        <span><b>蓝键</b> 设置</span>
+      </footer>
+    </section>
+
+    <!-- Collection list (within a source) -->
+    <section class="screen" id="screen-collections" hidden>
+      <header class="topbar">
+        <h1 class="topbar-title" id="collections-source-name"></h1>
+        <span class="topbar-sub">选择相册</span>
+      </header>
+      <div class="collection-list" id="collection-list"></div>
+      <footer class="hintbar">
+        <span><b>OK</b> 浏览</span>
+        <span><b>长按 OK</b> 播放此相册</span>
+        <span><b>返回</b> 源选择</span>
+      </footer>
+    </section>
+
+    <!-- Browse grid -->
+    <section class="screen" id="screen-grid" hidden>
+      <div class="grid-viewport" id="grid-viewport">
+        <div class="grid-canvas" id="grid-canvas"></div>
+      </div>
+      <div class="grid-status" id="grid-status"></div>
+      <footer class="hintbar">
+        <span><b>OK</b> 查看</span>
+        <span><b>长按 OK</b> 从此播放</span>
+        <span><b>返回</b> 相册列表</span>
+      </footer>
+    </section>
+
+    <!-- Fullscreen viewer -->
+    <section class="screen overlay-screen" id="screen-viewer" hidden>
+      <div class="viewer-stage" id="viewer-stage"></div>
+      <div class="viewer-meta" id="viewer-meta"></div>
+      <footer class="hintbar">
+        <span><b>←→</b> 切换</span>
+        <span><b>绿键</b> 从此播放</span>
+        <span><b>返回</b> 关闭</span>
+      </footer>
+    </section>
+
+    <!-- Kiosk slideshow -->
+    <section class="screen" id="screen-kiosk" hidden>
+      <div class="kiosk-frame" id="kiosk-a"></div>
+      <div class="kiosk-frame" id="kiosk-b"></div>
+      <div class="kiosk-meta" id="kiosk-meta">
+        <div class="kiosk-date" id="kiosk-date"></div>
+        <div class="kiosk-name" id="kiosk-name"></div>
+      </div>
+      <div class="kiosk-paused" id="kiosk-paused" hidden>❚❚ 已暂停</div>
+    </section>
+
+    <!-- PIN overlay -->
+    <div class="modal" id="pin-overlay" hidden>
+      <div class="modal-card">
+        <h2 class="modal-title" id="pin-title">输入 PIN</h2>
+        <div class="pin-display" id="pin-display">
+          <span class="pin-dot"></span><span class="pin-dot"></span>
+          <span class="pin-dot"></span><span class="pin-dot"></span>
+        </div>
+        <div class="pin-pad" id="pin-pad"></div>
+        <p class="modal-hint">方向键移动 · OK 输入 · 红键删除 · 返回取消</p>
+      </div>
+    </div>
+
+    <!-- Settings overlay -->
+    <div class="modal" id="settings-overlay" hidden>
+      <div class="modal-card">
+        <h2 class="modal-title">设置</h2>
+        <div class="settings-list" id="settings-list"></div>
+        <p class="modal-hint">←→ 调整 · 返回关闭</p>
+      </div>
+    </div>
+
+    <div class="toast" id="toast" hidden></div>
+
+    <script src="js/core/store.js"></script>
+    <script src="js/core/keys.js"></script>
+    <script src="js/core/player.js"></script>
+    <script src="js/clients/source.js"></script>
+    <script src="js/clients/photofield.js"></script>
+    <script src="js/ui/pin.js"></script>
+    <script src="js/ui/sources.js"></script>
+    <script src="js/ui/collections.js"></script>
+    <script src="js/ui/grid.js"></script>
+    <script src="js/ui/viewer.js"></script>
+    <script src="js/ui/kiosk.js"></script>
+    <script src="js/ui/settings.js"></script>
+    <script src="js/app.js"></script>
+  </body>
+</html>
