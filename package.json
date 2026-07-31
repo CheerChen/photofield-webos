@@ -5,6 +5,6 @@
   "license": "MIT",
   "type": "module",
   "scripts": {
-    "check": "node --check js/app.js && node --check js/core/store.js && node --check js/core/keys.js && node --check js/core/player.js && node --check js/clients/source.js && node --check js/clients/photofield.js && node --check js/ui/icons.js && node --check js/ui/pin.js && node --check js/ui/sources.js && node --check js/ui/collections.js && node --check js/ui/grid.js && node --check js/ui/viewer.js && node --check js/ui/kiosk.js && node --check js/ui/settings.js && node tests/store.test.mjs && node tests/player.test.mjs"
+    "check": "node --check js/app.js && node --check js/core/store.js && node --check js/core/keys.js && node --check js/core/player.js && node --check js/core/music.js && node --check js/core/screensaver.js && node --check js/clients/source.js && node --check js/clients/photofield.js && node --check js/ui/icons.js && node --check js/ui/pin.js && node --check js/ui/sources.js && node --check js/ui/collections.js && node --check js/ui/grid.js && node --check js/ui/viewer.js && node --check js/ui/kiosk.js && node --check js/ui/settings.js && node tests/store.test.mjs && node tests/player.test.mjs && node tests/music.test.mjs"
   }
 }

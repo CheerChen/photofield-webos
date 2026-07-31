@@ -14,6 +14,7 @@ cd "$ROOT"
 cp appinfo.json index.html "$STAGE/"
 cp -R js css "$STAGE/"
 cp -R assets/icons "$STAGE/assets/"
+cp -R assets/audio "$STAGE/assets/"
 cp assets/splash.png "$STAGE/assets/" 2>/dev/null || true
 find "$STAGE" -name ".DS_Store" -delete
 
