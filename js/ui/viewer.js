@@ -53,7 +53,7 @@
       } else if (key === "right" && index < count - 1) {
         index++;
         show();
-      } else if (key === "green" || key === "longok") {
+      } else if (key === "play" || key === "green") {
         $("screen-viewer").hidden = true;
         window.Store.set("lastCollection", collection.id);
         window.KioskScreen.open(source, [collection.id], {

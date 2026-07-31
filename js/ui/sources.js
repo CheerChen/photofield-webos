@@ -19,7 +19,7 @@
         '<div class="source-card-count">' +
         (count === undefined ? "…" : count.toLocaleString() + " 张") +
         "</div>" +
-        '<div class="source-card-play">▶ 长按播放</div>';
+        '<div class="source-card-play">⏵ 键播放</div>';
       row.appendChild(card);
     });
   }
@@ -69,7 +69,7 @@
       if (key === "left") focusIdx = (focusIdx - 1 + n) % n;
       else if (key === "right") focusIdx = (focusIdx + 1) % n;
       else if (key === "ok") enter(window.Sources.all()[focusIdx]);
-      else if (key === "longok" || key === "green") play(window.Sources.all()[focusIdx]);
+      else if (key === "play" || key === "green") play(window.Sources.all()[focusIdx]);
       else if (key === "blue") return window.SettingsScreen.open();
       else if (key === "back") return window.App.exit();
       else return;

@@ -14,7 +14,8 @@
     return [
       { key: "startup", label: "启动行为", value: startup.label },
       { key: "duration", label: "播放间隔", value: window.Store.get("duration") + " 秒" },
-      { key: "pin", label: "PIN 锁", value: window.Store.hasPin() ? "已设置" : "未设置" },
+      // PIN row hidden: no source is currently locked. Re-add when a locked
+      // source comes back (see js/clients/source.js "locked").
     ];
   }
 
@@ -56,16 +57,7 @@
       else if (key === "down") focusIdx = (focusIdx + 1) % rows().length;
       else if (key === "left") adjust(-1);
       else if (key === "right") adjust(1);
-      else if (key === "ok" && rows()[focusIdx].key === "pin") {
-        window.Pin.setup(() => {
-          // Back to settings after PIN flow completes.
-          $("settings-overlay").hidden = false;
-          window.Keys.activate("settings");
-          render();
-        });
-        $("settings-overlay").hidden = true;
-        return;
-      } else if (key === "back") {
+      else if (key === "back") {
         $("settings-overlay").hidden = true;
         window.Keys.activate(returnTo);
         return;

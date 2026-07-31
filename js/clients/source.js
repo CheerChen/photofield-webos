@@ -27,7 +27,7 @@
       id: "x",
       name: "X",
       baseUrl: "http://192.168.0.110:8001",
-      locked: true,
+      locked: false,
     },
     {
       id: "wallpaper",

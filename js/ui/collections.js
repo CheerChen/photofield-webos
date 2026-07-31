@@ -51,7 +51,7 @@
       else if (key === "ok") {
         window.GridScreen.backTarget = "collections";
         window.GridScreen.open(source, collections[focusIdx]);
-      } else if (key === "longok" || key === "green") {
+      } else if (key === "play" || key === "green") {
         const c = collections[focusIdx];
         window.Store.set("lastCollection", c.id);
         window.KioskScreen.open(source, [c.id], { shuffle: true });

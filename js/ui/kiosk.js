@@ -73,13 +73,17 @@
 
     onKey({ key }) {
       if (!player) return;
-      if (key === "ok") {
+      if (key === "ok" || key === "play" || key === "pause") {
         const paused = player.togglePause();
         $("kiosk-paused").hidden = !paused;
-      } else if (key === "right") {
+      } else if (key === "right" || key === "fastforward") {
         player.next();
-      } else if (key === "left") {
+      } else if (key === "left" || key === "rewind") {
         player.prev();
+      } else if (key === "stop") {
+        player.stop();
+        player = null;
+        window.App.show(returnTo === "grid" ? "grid" : returnTo);
       } else if (key === "red") {
         metaVisible = !metaVisible;
         $("kiosk-meta").style.opacity = metaVisible ? "1" : "0";

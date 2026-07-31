@@ -174,7 +174,7 @@
       else if (key === "down") move(0, 1);
       else if (key === "ok" && focused) {
         window.ViewerScreen.open(source, collection, focused.i);
-      } else if ((key === "longok" || key === "green") && focused) {
+      } else if ((key === "play" || key === "green") && focused) {
         window.Store.set("lastCollection", collection.id);
         window.KioskScreen.open(source, [collection.id], {
           shuffle: false,
