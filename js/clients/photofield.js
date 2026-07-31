@@ -24,6 +24,16 @@
 
     async function api(path, opts) {
       const r = await fetch(base + "/api" + path, opts);
+      if (r.status === 500) {
+        // 500 is typically a transient SQLite pool exhaustion on the pi.
+        // Retry once after a brief pause before surfacing the error.
+        await new Promise((r) => setTimeout(r, 2000));
+        const r2 = await fetch(base + "/api" + path, opts);
+        if (r2.ok) return r2.json();
+        const err = new Error("photofield " + r2.status);
+        err.status = r2.status;
+        throw err;
+      }
       if (!r.ok) {
         const err = new Error("photofield " + r.status);
         err.status = r.status;
@@ -155,17 +165,19 @@
         });
       },
 
-      thumbUrl(photo) {
-        // Pre-generated variant (~256px, made at index time) beats dynamic
-        // previews for grid density. Fall back to a dynamic preview.
-        const t = photo.thumbnails.find((t) => t.width >= 200 && t.width <= 512) ||
-          photo.thumbnails[0];
+      /* Smallest pre-generated variant at or above target width; falls back
+       * to the largest variant, then to a dynamic preview. */
+      thumbUrl(photo, target) {
+        const want = target || 384;
+        const ts = photo.thumbnails.filter((t) => t.name !== "original");
+        const t = ts.filter((t) => t.width >= want).sort((a, b) => a.width - b.width)[0] ||
+          ts.sort((a, b) => b.width - a.width)[0];
         if (t) {
           return base + "/api/files/" + photo.id + "/variants/" +
             encodeURIComponent(t.name) + "/" + encodeURIComponent(t.filename);
         }
         return base + "/api/files/" + photo.id + "/previews/" +
-          encodeURIComponent(photo.filename) + "?width=384";
+          encodeURIComponent(photo.filename) + "?width=" + want;
       },
 
       previewUrl(photo, width) {

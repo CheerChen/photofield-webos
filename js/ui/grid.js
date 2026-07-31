@@ -39,7 +39,7 @@
       cell.style.height = it.h + "px";
       const img = document.createElement("img");
       img.loading = "lazy";
-      img.src = client.thumbUrl(it.photo);
+      img.src = client.thumbUrl(it.photo, 512); // FLEX cells run ~280-600px wide
       cell.appendChild(img);
       if (it.photo.isVideo) {
         const badge = document.createElement("span");

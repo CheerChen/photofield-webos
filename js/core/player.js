@@ -17,14 +17,18 @@
     let timer = null;
     let paused = false;
     let stopped = false;
+    let consecutiveErrors = 0;
     const cache = new Map(); // pos -> Image (only pos-1..pos+1 kept)
 
     async function buildOrder() {
+      // Count all collections in parallel — sequential photoCount over a
+      // 38-collection source left the kiosk on a black screen for tens of
+      // seconds, which users read as a crash.
+      const counts = await Promise.all(collections.map((c) => client.photoCount(c)));
       const parts = [];
-      for (const c of collections) {
-        const count = await client.photoCount(c);
-        for (let i = 0; i < count; i++) parts.push({ c, i });
-      }
+      collections.forEach((c, ci) => {
+        for (let i = 0; i < counts[ci]; i++) parts.push({ c, i });
+      });
       if (shuffle) {
         for (let i = parts.length - 1; i > 0; i--) {
           const j = Math.floor(Math.random() * (i + 1));
@@ -70,10 +74,18 @@
         const photo = await client.photoAt(entry.c, entry.i);
         if (stopped) return;
         if (!photo) return next(); // hole in region ids — skip
+        consecutiveErrors = 0;
         onPhoto(photo, client.previewUrl(photo, 1920), pos, order.length);
         schedule();
       } catch (e) {
+        consecutiveErrors++;
         if (onError) onError(e);
+        if (consecutiveErrors >= 3) {
+          // Server is likely down or pool exhausted — stop spinning.
+          stopped = true;
+          if (onError) onError(new Error("服务器连续错误，已停止播放"));
+          return;
+        }
         next();
       }
     }

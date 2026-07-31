@@ -68,4 +68,20 @@ await new Promise((r) => setTimeout(r, 100));
 assert.equal(new Set(shuffled).size, 10);
 p2.stop();
 
+// A selected start photo remains first in either configured order.
+for (const shuffle of [false, true]) {
+  const started = [];
+  const p = Player.create({
+    client,
+    collections: ["c1"],
+    shuffle,
+    start: { collectionId: "c1", index: 4 },
+    duration: 9999,
+    onPhoto: (photo) => started.push(photo.id),
+  });
+  await p.start;
+  assert.equal(started[0], 5);
+  p.stop();
+}
+
 console.log("player.test.mjs OK");

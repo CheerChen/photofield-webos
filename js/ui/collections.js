@@ -41,6 +41,7 @@
 
   /* Sequential, pi-friendly cover loader. */
   async function loadCovers(gen) {
+    let errors = 0;
     for (const c of collections) {
       if (gen !== coverGen) return;
       const slot = document.querySelector('[data-cover="' + c.id + '"]');
@@ -51,12 +52,15 @@
         if (photo) {
           slot.innerHTML = "";
           const img = document.createElement("img");
-          img.src = client.thumbUrl(photo);
+          img.src = client.thumbUrl(photo, 640); // covers render at ~410px wide
           slot.appendChild(img);
           slot.dataset.done = "1";
         }
       } catch (e) {
-        /* keep placeholder icon */
+        errors++;
+        if (errors === 1) {
+          window.App.toast("服务器错误，封面加载失败");
+        }
       }
       await new Promise((r) => setTimeout(r, 250));
     }
