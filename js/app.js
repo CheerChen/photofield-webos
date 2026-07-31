@@ -9,6 +9,11 @@
     show(name) {
       for (const s of SCREENS) $("screen-" + s).hidden = s !== name;
       window.Keys.activate(name);
+      // Source totals can change while browsing or playing. Refresh whenever
+      // navigation returns to this screen instead of only once at app boot.
+      if (name === "sources" && window.SourcesScreen) {
+        window.SourcesScreen.refresh();
+      }
     },
 
     back() {
@@ -29,7 +34,7 @@
     },
   };
 
-  function boot() {
+  async function boot() {
     window.Keys.bind("sources", (e) => window.SourcesScreen.onKey(e));
     window.Keys.bind("collections", (e) => window.CollectionsScreen.onKey(e));
     window.Keys.bind("grid", (e) => window.GridScreen.onKey(e));
@@ -41,6 +46,13 @@
     $("grid-viewport").addEventListener("scroll", (e) =>
       window.GridScreen.onScroll(e.target.scrollTop)
     );
+
+    // Discover sources by probing the port range. Cached sources (from
+    // localStorage) are already loaded synchronously by Sources, so the
+    // screen can render immediately if the discovery is slow.
+    window.SourcesScreen.open();
+    await window.Sources.discover();
+    if (window.Keys.current() === "sources") window.SourcesScreen.refresh();
 
     // Cold-start straight into the kiosk when configured and possible.
     if (window.Store.get("startup") === "kiosk" && window.Store.get("lastSource")) {
@@ -55,7 +67,7 @@
             const ids = lastCol && cols.some((c) => c.id === lastCol)
               ? [lastCol]
               : cols.map((c) => c.id);
-            window.KioskScreen.open(source, ids, { shuffle: true });
+            window.KioskScreen.open(source, ids);
           } catch (e) {
             window.App.toast("无法连接 " + source.name);
             window.SourcesScreen.open();

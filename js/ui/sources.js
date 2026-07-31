@@ -17,7 +17,7 @@
         (s.locked ? ' <span class="source-card-lock">' + window.Icons.lock + "</span>" : "") +
         "</div>" +
         '<div class="source-card-count">' +
-        (count === undefined ? "…" : count.toLocaleString() + " 张") +
+        (count === undefined ? "…" : count === -1 ? "连接失败" : count.toLocaleString() + " 张") +
         "</div>" +
         '<div class="source-card-play">' + window.Icons.play + " 播放</div>";
       row.appendChild(card);
@@ -30,7 +30,7 @@
         const cols = await window.Sources.client(s).collections();
         counts[s.id] = cols.reduce((n, c) => n + c.count, 0);
       } catch (e) {
-        counts[s.id] = 0;
+        counts[s.id] = -1; // -1 = error, rendered as "连接失败"
       }
       if (window.Keys.current() === "sources") render();
     }
@@ -49,7 +49,7 @@
       window.Store.set("lastCollection", null);
       try {
         const cols = await window.Sources.client(source).collections();
-        window.KioskScreen.open(source, cols.map((c) => c.id), { shuffle: true });
+        window.KioskScreen.open(source, cols.map((c) => c.id));
       } catch (e) {
         window.App.toast("无法连接 " + source.name);
       }
@@ -61,8 +61,9 @@
       window.App.show("sources");
       focusIdx = 0;
       render();
-      loadCounts();
     },
+
+    refresh: loadCounts,
 
     onKey({ key }) {
       const n = window.Sources.all().length;
