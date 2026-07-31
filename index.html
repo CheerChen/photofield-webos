@@ -61,12 +61,20 @@
 
     <!-- Kiosk slideshow -->
     <section class="screen" id="screen-kiosk" hidden>
-      <div class="kiosk-frame" id="kiosk-a"></div>
-      <div class="kiosk-frame" id="kiosk-b"></div>
+      <div class="kiosk-frame" id="kiosk-a">
+        <div class="kiosk-backdrop"></div>
+        <div class="kiosk-photo"></div>
+      </div>
+      <div class="kiosk-frame" id="kiosk-b">
+        <div class="kiosk-backdrop"></div>
+        <div class="kiosk-photo"></div>
+      </div>
       <div class="kiosk-meta" id="kiosk-meta">
         <div class="kiosk-date" id="kiosk-date"></div>
         <div class="kiosk-name" id="kiosk-name"></div>
       </div>
+      <div class="kiosk-loading" id="kiosk-loading" hidden>加载中…</div>
+      <div class="kiosk-music" id="kiosk-music" hidden><span id="kiosk-music-dot"></span><span id="kiosk-music-name"></span></div>
       <div class="kiosk-paused" id="kiosk-paused" hidden><svg class="icon" viewBox="0 0 24 24"><path d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg> 已暂停</div>
     </section>
 
@@ -97,6 +105,8 @@
     <script src="js/core/store.js"></script>
     <script src="js/core/keys.js"></script>
     <script src="js/core/player.js"></script>
+    <script src="js/core/music.js"></script>
+    <script src="js/core/screensaver.js"></script>
     <script src="js/clients/source.js"></script>
     <script src="js/clients/photofield.js"></script>
     <script src="js/ui/icons.js"></script>

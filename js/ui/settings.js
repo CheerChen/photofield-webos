@@ -6,14 +6,30 @@
     { id: "sources", label: "源选择页" },
     { id: "kiosk", label: "直接播放上次源" },
   ];
+  const FIT_MODES = [
+    { id: "ambient", label: "竖图氛围填充" },
+    { id: "contain", label: "完整显示" },
+    { id: "cover", label: "裁切填满" },
+  ];
+  const PLAY_ORDERS = [
+    { id: "shuffle", label: "随机播放" },
+    { id: "sequential", label: "顺序播放" },
+  ];
   let focusIdx = 0;
   let returnTo = "sources";
 
+  function current(options, key) {
+    return options.find((option) => option.id === window.Store.get(key)) || options[0];
+  }
+
   function rows() {
-    const startup = STARTUPS.find((s) => s.id === window.Store.get("startup"));
     return [
-      { key: "startup", label: "启动行为", value: startup.label },
+      { key: "startup", label: "启动行为", value: current(STARTUPS, "startup").label },
       { key: "duration", label: "播放间隔", value: window.Store.get("duration") + " 秒" },
+      { key: "fitMode", label: "相片填充", value: current(FIT_MODES, "fitMode").label },
+      { key: "playOrder", label: "播放顺序", value: current(PLAY_ORDERS, "playOrder").label },
+      { key: "host", label: "服务器地址", value: window.Store.get("photofield.host") || "192.168.0.110" },
+      { key: "rescan", label: "重新扫描实例", value: "" },
       // PIN row hidden: no source is currently locked. Re-add when a locked
       // source comes back (see js/clients/source.js "locked").
     ];
@@ -30,15 +46,34 @@
     });
   }
 
+  function cycle(key, options, dir) {
+    const cur = Math.max(0, options.findIndex((option) => option.id === window.Store.get(key)));
+    window.Store.set(key, options[(cur + dir + options.length) % options.length].id);
+  }
+
   function adjust(dir) {
     const row = rows()[focusIdx];
     if (row.key === "startup") {
-      const cur = STARTUPS.findIndex((s) => s.id === window.Store.get("startup"));
-      window.Store.set("startup", STARTUPS[(cur + dir + STARTUPS.length) % STARTUPS.length].id);
+      cycle("startup", STARTUPS, dir);
     } else if (row.key === "duration") {
-      const cur = DURATIONS.indexOf(window.Store.get("duration"));
-      const next = DURATIONS[(cur + dir + DURATIONS.length) % DURATIONS.length];
-      window.Store.set("duration", next);
+      const cur = Math.max(0, DURATIONS.indexOf(window.Store.get("duration")));
+      window.Store.set("duration", DURATIONS[(cur + dir + DURATIONS.length) % DURATIONS.length]);
+    } else if (row.key === "fitMode") {
+      cycle("fitMode", FIT_MODES, dir);
+    } else if (row.key === "playOrder") {
+      cycle("playOrder", PLAY_ORDERS, dir);
+    } else if (row.key === "host") {
+      // Cycle the last octet up/down for quick switching.
+      const cur = window.Store.get("photofield.host") || "192.168.0.110";
+      const parts = cur.split(".");
+      let last = parseInt(parts[3] || "110", 10) + dir;
+      if (last < 1) last = 254;
+      if (last > 254) last = 1;
+      parts[3] = String(last);
+      window.Store.set("photofield.host", parts.join("."));
+    } else if (row.key === "rescan") {
+      // OK on the rescan row triggers a scan; left/right do nothing.
+      return;
     }
     render();
   }
@@ -57,7 +92,18 @@
       else if (key === "down") focusIdx = (focusIdx + 1) % rows().length;
       else if (key === "left") adjust(-1);
       else if (key === "right") adjust(1);
-      else if (key === "back") {
+      else if (key === "ok") {
+        const row = rows()[focusIdx];
+        if (row.key === "rescan") {
+          window.App.toast("扫描中…");
+          window.Sources.discover().then(() => {
+            window.App.toast("扫描完成");
+            if (window.Keys.current() === "sources") window.SourcesScreen.refresh();
+          });
+          return;
+        }
+        return;
+      } else if (key === "back") {
         $("settings-overlay").hidden = true;
         window.Keys.activate(returnTo);
         return;

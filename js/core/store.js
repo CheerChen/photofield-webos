@@ -6,6 +6,8 @@
   const DEFAULTS = {
     startup: "sources", // "sources" | "kiosk" (resume last source)
     duration: 12, // kiosk seconds per photo
+    fitMode: "ambient", // "ambient" | "contain" | "cover"
+    playOrder: "shuffle", // "shuffle" | "sequential"
     pinHash: null, // hash of 4-digit PIN, null = not set
     lastSource: null,
     lastCollection: null,

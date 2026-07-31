@@ -111,7 +111,7 @@
       } else if (key === "play" || key === "green") {
         const c = collections[focusIdx];
         window.Store.set("lastCollection", c.id);
-        window.KioskScreen.open(source, [c.id], { shuffle: true });
+        window.KioskScreen.open(source, [c.id]);
       } else if (key === "back") {
         coverGen++;
         return window.App.show("sources");

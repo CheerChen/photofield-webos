@@ -57,7 +57,6 @@
         $("screen-viewer").hidden = true;
         window.Store.set("lastCollection", collection.id);
         window.KioskScreen.open(source, [collection.id], {
-          shuffle: false,
           start: { collectionId: collection.id, index },
         });
       } else if (key === "back" || key === "ok") {

@@ -13,10 +13,16 @@ const Store = globalThis.window.Store;
 
 assert.equal(Store.get("duration"), 12);
 assert.equal(Store.get("startup"), "sources");
+assert.equal(Store.get("fitMode"), "ambient");
+assert.equal(Store.get("playOrder"), "shuffle");
 assert.equal(Store.hasPin(), false);
 
 Store.set("duration", 20);
+Store.set("fitMode", "cover");
+Store.set("playOrder", "sequential");
 assert.equal(Store.get("duration"), 20);
+assert.equal(Store.get("fitMode"), "cover");
+assert.equal(Store.get("playOrder"), "sequential");
 
 Store.setPin("1234");
 assert.equal(Store.hasPin(), true);
