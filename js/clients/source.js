@@ -101,9 +101,17 @@
       return pa - pb;
     });
 
-    sources = found;
-    persist();
-    return found;
+    // An empty scan (server rebooting, router down, wrong host) must NOT
+    // wipe the cached source list: lastSource would be invalidated and the
+    // kiosk autostart would silently break until a manual rescan. Only
+    // overwrite when at least one instance responded; otherwise keep the
+    // cached list (still in effect via Sources.all()) and return it so the
+    // return value matches the live state callers render against.
+    if (found.length > 0) {
+      sources = found;
+      persist();
+    }
+    return sources;
   }
 
   function persist() {

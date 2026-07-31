@@ -63,16 +63,7 @@
   }
 
   function play(source) {
-    window.Pin.gate(source, async () => {
-      window.Store.set("lastSource", source.id);
-      window.Store.set("lastCollection", null);
-      try {
-        const cols = await window.Sources.client(source).collections();
-        window.KioskScreen.open(source, cols.map((c) => c.id));
-      } catch (e) {
-        window.App.toast("无法连接 " + source.name);
-      }
-    });
+    window.Playback.playSource(source);
   }
 
   window.SourcesScreen = {
@@ -86,6 +77,14 @@
 
     onKey({ key }) {
       const n = window.Sources.all().length;
+      // No sources (server down / not configured): only settings and exit
+      // are meaningful. Any other key would index into an empty list and
+      // crash (NaN focus, enter(undefined)).
+      if (n === 0) {
+        if (key === "blue") return window.SettingsScreen.open();
+        if (key === "back") return window.App.exit();
+        return;
+      }
       if (key === "left") focusIdx = (focusIdx - 1 + n) % n;
       else if (key === "right") focusIdx = (focusIdx + 1) % n;
       else if (key === "ok") enter(window.Sources.all()[focusIdx]);

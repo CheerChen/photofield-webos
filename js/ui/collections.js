@@ -20,10 +20,22 @@
     collections.forEach((c, i) => {
       const card = document.createElement("div");
       card.className = "collection-card";
-      card.innerHTML =
-        '<div class="collection-cover" data-cover="' + c.id + '">' + window.Icons.photo + "</div>" +
-        '<div class="collection-caption"><span class="name">' + c.name + "</span>" +
-        '<span class="count">' + c.count.toLocaleString() + "</span></div>";
+      const cover = document.createElement("div");
+      cover.className = "collection-cover";
+      cover.dataset.cover = c.id;
+      cover.innerHTML = window.Icons.photo; // SVG placeholder glyph
+      const caption = document.createElement("div");
+      caption.className = "collection-caption";
+      const name = document.createElement("span");
+      name.className = "name";
+      name.textContent = c.name;
+      const countEl = document.createElement("span");
+      countEl.className = "count";
+      countEl.textContent = c.count.toLocaleString();
+      caption.appendChild(name);
+      caption.appendChild(countEl);
+      card.appendChild(cover);
+      card.appendChild(caption);
       grid.appendChild(card);
     });
     applyFocus();

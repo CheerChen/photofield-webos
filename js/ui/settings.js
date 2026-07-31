@@ -63,14 +63,10 @@
     } else if (row.key === "playOrder") {
       cycle("playOrder", PLAY_ORDERS, dir);
     } else if (row.key === "host") {
-      // Cycle the last octet up/down for quick switching.
-      const cur = window.Store.get("photofield.host") || "192.168.0.110";
-      const parts = cur.split(".");
-      let last = parseInt(parts[3] || "110", 10) + dir;
-      if (last < 1) last = 254;
-      if (last > 254) last = 1;
-      parts[3] = String(last);
-      window.Store.set("photofield.host", parts.join("."));
+      // Host editing is handled by OK (opens the full IP input overlay);
+      // left/right do nothing here. The old +-1 last-octet cycle made
+      // cross-subnet edits impossible.
+      return;
     } else if (row.key === "rescan") {
       // OK on the rescan row triggers a scan; left/right do nothing.
       return;
@@ -99,6 +95,25 @@
           window.Sources.discover().then(() => {
             window.App.toast("扫描完成");
             if (window.Keys.current() === "sources") window.SourcesScreen.refresh();
+          });
+          return;
+        }
+        if (row.key === "host") {
+          const cur = window.Store.get("photofield.host") || "192.168.0.110";
+          $("settings-overlay").hidden = true;
+          window.IpInput.open(cur, {
+            onConfirm: (host) => {
+              window.Store.set("photofield.host", host);
+              // Re-show settings overlay and refresh the row value.
+              $("settings-overlay").hidden = false;
+              window.Keys.activate("settings");
+              render();
+              window.App.toast("地址已更新，重新扫描生效");
+            },
+            onCancel: () => {
+              $("settings-overlay").hidden = false;
+              window.Keys.activate("settings");
+            },
           });
           return;
         }
