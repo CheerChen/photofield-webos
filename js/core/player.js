@@ -6,6 +6,10 @@
     const {
       client,
       collections, // [collectionId, ...] — chained into one order
+      counts, // optional [number] aligned with collections; when supplied,
+              // buildOrder skips per-collection photoCount() so the pi does
+              // not have to create+poll N scenes before the first photo.
+              // Falls back to photoCount() when absent (e.g. unit tests).
       shuffle,
       start, // {collectionId, index} to start from, else 0
       duration,
@@ -21,13 +25,16 @@
     const cache = new Map(); // pos -> Image (only pos-1..pos+1 kept)
 
     async function buildOrder() {
-      // Count all collections in parallel — sequential photoCount over a
-      // 38-collection source left the kiosk on a black screen for tens of
-      // seconds, which users read as a crash.
-      const counts = await Promise.all(collections.map((c) => client.photoCount(c)));
+      // Prefer pre-supplied counts (from collections().indexed_count) so
+      // scene creation is deferred to the first photoAt touch instead of
+      // fan-out across every collection. Without counts, fall back to
+      // parallel photoCount() — which forces ensureScene on each.
+      const nums = counts
+        ? counts
+        : await Promise.all(collections.map((c) => client.photoCount(c)));
       const parts = [];
       collections.forEach((c, ci) => {
-        for (let i = 0; i < counts[ci]; i++) parts.push({ c, i });
+        for (let i = 0; i < nums[ci]; i++) parts.push({ c, i });
       });
       if (shuffle) {
         for (let i = parts.length - 1; i > 0; i--) {
@@ -82,8 +89,15 @@
         if (onError) onError(e);
         if (consecutiveErrors >= 3) {
           // Server is likely down or pool exhausted — stop spinning.
+          // Signal via a stable error code, not a localized message string:
+          // kiosk.js branches on e.code === "STOPPED" so wording changes
+          // can't break the control flow.
           stopped = true;
-          if (onError) onError(new Error("服务器连续错误，已停止播放"));
+          if (onError) {
+            const err = new Error("服务器连续错误，已停止播放");
+            err.code = "STOPPED";
+            onError(err);
+          }
           return;
         }
         next();

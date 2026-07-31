@@ -21,6 +21,28 @@
   function create(source) {
     const base = source.baseUrl;
     const scenes = new Map(); // collectionId -> {id, fileCount, height}
+    // photoAt metadata cache: player.js preload() and show() both call
+    // photoAt for the same (collection, index), so without a cache every
+    // slide costs two region requests on the pi. Keyed by "collectionId:i",
+    // value is the photo object or null (a hole). Bounded LRU so a long
+    // slideshow does not grow unbounded.
+    const photoCache = new Map();
+    const PHOTO_CACHE_MAX = 64;
+
+    function photoCacheGet(key) {
+      if (!photoCache.has(key)) return undefined;
+      const v = photoCache.get(key);
+      photoCache.delete(key);
+      photoCache.set(key, v); // move to most-recent
+      return v;
+    }
+    function photoCacheSet(key, v) {
+      if (photoCache.has(key)) photoCache.delete(key);
+      photoCache.set(key, v);
+      if (photoCache.size > PHOTO_CACHE_MAX) {
+        photoCache.delete(photoCache.keys().next().value);
+      }
+    }
 
     async function api(path, opts) {
       const r = await fetch(base + "/api" + path, opts);
@@ -132,9 +154,15 @@
         return scenes.get(collectionId).height;
       },
 
-      /* Regions are 1-based and sequential in layout order. */
+      /* Regions are 1-based and sequential in layout order. Results are
+       * cached: the same (collection, index) is requested by both preload()
+       * and show() in player.js, and the layout for a given collection is
+       * deterministic, so a cached photo stays valid for the session. */
       async photoAt(collectionId, i) {
-        return withSceneRetry(collectionId, async (s) => {
+        const key = collectionId + ":" + i;
+        const cached = photoCacheGet(key);
+        if (cached !== undefined) return cached;
+        const result = await withSceneRetry(collectionId, async (s) => {
           try {
             const r = await api("/scenes/" + s.id + "/regions/" + (i + 1));
             return r.data ? mapPhoto(r.data) : null;
@@ -143,6 +171,8 @@
             throw e;
           }
         });
+        photoCacheSet(key, result);
+        return result;
       },
 
       /* Horizontal band of the wall layout for the browse grid. */
