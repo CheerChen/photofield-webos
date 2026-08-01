@@ -2,6 +2,21 @@
  * with a 3-image memory window (prev/current/next). The TV has 2.5GB RAM
  * shared with the system — never hold more than these three decoded images. */
 (function () {
+  const MAX_CONSECUTIVE_ERRORS = 5;
+  const RESOLVED_URL_CACHE_MAX = 64;
+
+  function cancelledError() {
+    const error = new Error("image load cancelled");
+    error.code = "CANCELLED";
+    return error;
+  }
+
+  function holeError() {
+    const error = new Error("photo region is empty");
+    error.code = "HOLE";
+    return error;
+  }
+
   function createPlayer(opts) {
     const {
       client,
@@ -15,6 +30,7 @@
       duration,
       onPhoto,
       onError,
+      onNavigate,
     } = opts;
     let order = []; // [{c, i}]
     let pos = 0;
@@ -22,7 +38,136 @@
     let paused = false;
     let stopped = false;
     let consecutiveErrors = 0;
-    const cache = new Map(); // pos -> Image (only pos-1..pos+1 kept)
+    let showGeneration = 0;
+    const cache = new Map(); // pos -> in-flight/decoded image state
+    const resolvedUrls = new Map(); // "collection:index" -> last good URL
+
+    function entryKey(entry) {
+      return entry.c + ":" + entry.i;
+    }
+
+    function resolvedGet(key) {
+      if (!resolvedUrls.has(key)) return undefined;
+      const value = resolvedUrls.get(key);
+      resolvedUrls.delete(key);
+      resolvedUrls.set(key, value);
+      return value;
+    }
+
+    function resolvedSet(key, value) {
+      if (resolvedUrls.has(key)) resolvedUrls.delete(key);
+      resolvedUrls.set(key, value);
+      if (resolvedUrls.size > RESOLVED_URL_CACHE_MAX) {
+        resolvedUrls.delete(resolvedUrls.keys().next().value);
+      }
+    }
+
+    function previewCandidates(photo, preferred) {
+      const listed = client.previewCandidates
+        ? client.previewCandidates(photo, 1920)
+        : [client.previewUrl(photo, 1920)];
+      const candidates = Array.isArray(listed) ? listed.filter(Boolean) : [listed];
+      return preferred
+        ? [preferred, ...candidates.filter((url) => url !== preferred)]
+        : candidates;
+    }
+
+    function ensurePreview(p) {
+      if (p < 0 || p >= order.length) {
+        return Promise.reject(new Error("photo position out of range"));
+      }
+      const existing = cache.get(p);
+      if (existing && !existing.cancelled) return existing.promise;
+
+      const entry = order[p];
+      const key = entryKey(entry);
+      const state = {
+        cancelled: false,
+        request: null,
+        image: null,
+        photo: null,
+        url: null,
+      };
+
+      state.promise = Promise.resolve()
+        .then(() => client.photoAt(entry.c, entry.i))
+        .then((photo) => {
+          if (stopped || state.cancelled) throw cancelledError();
+          if (!photo) throw holeError();
+          state.photo = photo;
+          const preferred = resolvedGet(key);
+          const candidates = previewCandidates(photo, preferred);
+          if (!window.ImageLoader) throw new Error("ImageLoader unavailable");
+          state.request = window.ImageLoader.load(candidates);
+          return state.request.promise;
+        })
+        .then((result) => {
+          if (stopped || state.cancelled) throw cancelledError();
+          state.image = result.image;
+          state.url = result.url;
+          resolvedSet(key, result.url);
+          return { photo: state.photo, url: state.url, image: state.image };
+        })
+        .catch((error) => {
+          // A failed preload must not poison the collection/index forever.
+          // The next show() will create a fresh request and retry the chain.
+          if (state.request && state.request.image) {
+            try { state.request.image.src = ""; } catch (e) { /* ignore */ }
+          }
+          if (cache.get(p) === state) cache.delete(p);
+          throw error;
+        });
+      // Preloads intentionally run in the background; consume their rejection
+      // here while returning the original promise to show() when it is needed.
+      state.promise.catch(() => {});
+      cache.set(p, state);
+      return state.promise;
+    }
+
+    function preload(p) {
+      if (p < 0 || p >= order.length || stopped) return;
+      ensurePreview(p).catch(() => {});
+    }
+
+    function cancelState(state) {
+      state.cancelled = true;
+      if (state.request) state.request.cancel();
+      if (state.image) {
+        try { state.image.src = ""; } catch (e) { /* ignore */ }
+      }
+    }
+
+    function prune() {
+      for (const [p, state] of cache) {
+        if (Math.abs(p - pos) > 1) {
+          cancelState(state);
+          cache.delete(p);
+        }
+      }
+    }
+
+    function stopForErrors() {
+      stopped = true;
+      showGeneration++;
+      clearTimeout(timer);
+      for (const state of cache.values()) cancelState(state);
+      cache.clear();
+      if (onError) {
+        const error = new Error("服务器连续错误，已停止播放");
+        error.code = "STOPPED";
+        onError(error);
+      }
+    }
+
+    function recordError(error) {
+      consecutiveErrors++;
+      if (onError) onError(error);
+      if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
+        stopForErrors();
+        return false;
+      }
+      return true;
+    }
 
     async function buildOrder() {
       // Prefer pre-supplied counts (from collections().indexed_count) so
@@ -51,56 +196,26 @@
       if (!order.length) throw new Error("empty collection");
     }
 
-    function preload(p) {
-      if (p < 0 || p >= order.length || cache.has(p)) return;
-      const entry = order[p];
-      const img = new Image();
-      // Resolve metadata lazily: src set once photoAt resolves.
-      client.photoAt(entry.c, entry.i).then((photo) => {
-        if (!stopped && photo) img.src = client.previewUrl(photo, 1920);
-      }).catch(() => {});
-      cache.set(p, img);
-    }
-
-    function prune() {
-      for (const [p, img] of cache) {
-        if (Math.abs(p - pos) > 1) {
-          img.src = "";
-          cache.delete(p);
-        }
-      }
-    }
-
     async function show() {
       if (stopped) return;
+      const token = ++showGeneration;
       prune();
       preload(pos + 1);
       preload(pos - 1);
-      const entry = order[pos];
+      const current = pos;
       try {
-        const photo = await client.photoAt(entry.c, entry.i);
-        if (stopped) return;
-        if (!photo) return next(); // hole in region ids — skip
+        const result = await ensurePreview(current);
+        if (stopped || token !== showGeneration || current !== pos) return;
+        // Reset only after the current photo itself has loaded successfully;
+        // metadata success alone is not enough to clear the circuit breaker.
         consecutiveErrors = 0;
-        onPhoto(photo, client.previewUrl(photo, 1920), pos, order.length);
+        onPhoto(result.photo, result.url, current, order.length);
         schedule();
-      } catch (e) {
-        consecutiveErrors++;
-        if (onError) onError(e);
-        if (consecutiveErrors >= 3) {
-          // Server is likely down or pool exhausted — stop spinning.
-          // Signal via a stable error code, not a localized message string:
-          // kiosk.js branches on e.code === "STOPPED" so wording changes
-          // can't break the control flow.
-          stopped = true;
-          if (onError) {
-            const err = new Error("服务器连续错误，已停止播放");
-            err.code = "STOPPED";
-            onError(err);
-          }
-          return;
-        }
-        next();
+      } catch (error) {
+        if (stopped || token !== showGeneration || current !== pos) return;
+        if (error.code === "CANCELLED") return;
+        if (error.code === "HOLE") return next();
+        if (recordError(error)) next();
       }
     }
 
@@ -111,20 +226,33 @@
 
     function next() {
       if (stopped) return;
+      clearTimeout(timer);
+      if (onNavigate) onNavigate();
       pos = (pos + 1) % order.length;
       show();
     }
 
     function prev() {
       if (stopped) return;
+      clearTimeout(timer);
+      if (onNavigate) onNavigate();
       pos = (pos - 1 + order.length) % order.length;
       show();
+    }
+
+    function reportImageError(error) {
+      if (stopped) return false;
+      const failure = error || new Error("image load failed");
+      if (!recordError(failure)) return false;
+      next();
+      return true;
     }
 
     return {
       start: buildOrder().then(show),
       next,
       prev,
+      reportImageError,
       togglePause() {
         paused = !paused;
         schedule();
@@ -132,10 +260,11 @@
       },
       stop() {
         stopped = true;
+        showGeneration++;
         clearTimeout(timer);
-        prune();
-        for (const [, img] of cache) img.src = "";
+        for (const state of cache.values()) cancelState(state);
         cache.clear();
+        resolvedUrls.clear();
       },
     };
   }

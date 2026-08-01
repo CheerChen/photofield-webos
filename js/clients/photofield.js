@@ -136,6 +136,66 @@
       };
     }
 
+    function variantWidth(variant) {
+      const width = Number(variant && variant.width);
+      return Number.isFinite(width) ? width : 0;
+    }
+
+    function variantUrl(photo, variant) {
+      if (!variant || !variant.name || !variant.filename) return null;
+      return base + "/api/files/" + photo.id + "/variants/" +
+        encodeURIComponent(variant.name) + "/" + encodeURIComponent(variant.filename);
+    }
+
+    function candidateUrls(photo, variants, preferred, want, dynamicWidth) {
+      const ordered = [];
+      const add = (url) => {
+        if (url && !ordered.includes(url)) ordered.push(url);
+      };
+      const addVariant = (variant) => add(variantUrl(photo, variant));
+
+      addVariant(preferred);
+      variants
+        .filter((variant) => variant !== preferred)
+        .map((variant, index) => ({
+          variant,
+          index,
+          distance: Math.abs(variantWidth(variant) - want),
+        }))
+        .sort((a, b) => a.distance - b.distance || a.index - b.index)
+        .forEach(({ variant }) => addVariant(variant));
+
+      // Unlike a generated variant, this endpoint creates the requested
+      // preview from the original on demand and is therefore the reliable
+      // end of the chain whenever the photo itself is available.
+      add(base + "/api/files/" + photo.id + "/previews/" +
+        encodeURIComponent(photo.filename) + "?width=" + dynamicWidth);
+      return ordered;
+    }
+
+    function thumbCandidates(photo, target) {
+      const want = target || 384;
+      const variants = (photo.thumbnails || []).filter((t) => t && t.name !== "original");
+      const preferred = variants
+        .filter((t) => variantWidth(t) >= want)
+        .sort((a, b) => variantWidth(a) - variantWidth(b))[0] ||
+        variants.slice().sort((a, b) => variantWidth(b) - variantWidth(a))[0];
+      return candidateUrls(photo, variants, preferred, want, want);
+    }
+
+    function previewCandidates(photo, width) {
+      // Prefer a pre-generated variant near the target size: indexing
+      // already produced e.g. ffmpeg-1280x1280-in, so the server just
+      // reads a file instead of resizing on the pi's CPU. The rest of the
+      // variants are still useful fallbacks when that file is absent.
+      const want = width || 1920;
+      const variants = (photo.thumbnails || []).filter(Boolean);
+      const preferred = variants
+        .filter((t) => variantWidth(t) >= want * 0.6)
+        .sort((a, b) => variantWidth(a) - variantWidth(b))[0];
+      return candidateUrls(photo, variants, preferred, want, want);
+    }
+
     return {
       async collections() {
         const r = await api("/collections");
@@ -195,35 +255,17 @@
         });
       },
 
-      /* Smallest pre-generated variant at or above target width; falls back
-       * to the largest variant, then to a dynamic preview. */
+      /* A thumbnail/preview entry describes a possible generated file, not a
+       * guarantee that the file exists for this particular photo. Keep the
+       * old single-URL helpers for callers outside this app, but make the
+       * candidate-chain methods the source of truth for image loading. */
+      thumbCandidates,
+      previewCandidates,
       thumbUrl(photo, target) {
-        const want = target || 384;
-        const ts = photo.thumbnails.filter((t) => t.name !== "original");
-        const t = ts.filter((t) => t.width >= want).sort((a, b) => a.width - b.width)[0] ||
-          ts.sort((a, b) => b.width - a.width)[0];
-        if (t) {
-          return base + "/api/files/" + photo.id + "/variants/" +
-            encodeURIComponent(t.name) + "/" + encodeURIComponent(t.filename);
-        }
-        return base + "/api/files/" + photo.id + "/previews/" +
-          encodeURIComponent(photo.filename) + "?width=" + want;
+        return thumbCandidates(photo, target)[0];
       },
-
       previewUrl(photo, width) {
-        // Prefer a pre-generated variant near the target size: indexing
-        // already produced e.g. ffmpeg-1280x1280-in, so the server just
-        // reads a file instead of resizing on the pi's CPU.
-        const want = width || 1920;
-        const big = photo.thumbnails
-          .filter((t) => t.width >= want * 0.6)
-          .sort((a, b) => a.width - b.width)[0];
-        if (big) {
-          return base + "/api/files/" + photo.id + "/variants/" +
-            encodeURIComponent(big.name) + "/" + encodeURIComponent(big.filename);
-        }
-        return base + "/api/files/" + photo.id + "/previews/" +
-          encodeURIComponent(photo.filename) + "?width=" + want;
+        return previewCandidates(photo, width)[0];
       },
 
       originalUrl(photo) {

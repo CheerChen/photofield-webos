@@ -2,12 +2,27 @@
 import assert from "node:assert/strict";
 
 const images = [];
-globalThis.Image = class {
-  set src(v) { this._src = v; images.push(v); }
+class MockImage {
+  static fail = new Set();
+
+  set src(v) {
+    this._src = v;
+    if (!v) return;
+    images.push(v);
+    queueMicrotask(() => {
+      if (MockImage.fail.has(v)) {
+        if (this.onerror) this.onerror(new Error("missing " + v));
+      } else if (this.onload) {
+        this.onload();
+      }
+    });
+  }
   get src() { return this._src; }
-};
+}
+globalThis.Image = MockImage;
 globalThis.window = {};
 
+await import("../js/core/image-loader.js");
 await import("../js/core/player.js");
 const Player = globalThis.window.Player;
 
@@ -63,8 +78,10 @@ const p2 = Player.create({
   onPhoto: (photo) => shuffled.push(photo.id),
 });
 await p2.start;
-for (let i = 0; i < 9; i++) p2.next();
-await new Promise((r) => setTimeout(r, 100));
+for (let i = 0; i < 9; i++) {
+  p2.next();
+  await new Promise((r) => setTimeout(r, 10));
+}
 assert.equal(new Set(shuffled).size, 10);
 p2.stop();
 
@@ -83,5 +100,81 @@ for (const shuffle of [false, true]) {
   assert.equal(started[0], 5);
   p.stop();
 }
+
+// A missing preferred variant falls through to the next candidate, and the
+// player reports the URL that actually loaded.
+MockImage.fail.add("bad-preview");
+const fallbackPhoto = { id: 99, width: 100, height: 100, filename: "fallback.jpg" };
+const fallbackShown = [];
+const fallbackPlayer = Player.create({
+  client: {
+    photoCount: async () => 1,
+    photoAt: async () => fallbackPhoto,
+    previewCandidates: () => ["bad-preview", "good-preview"],
+  },
+  collections: ["fallback"],
+  shuffle: false,
+  duration: 9999,
+  onPhoto: (photo, url) => fallbackShown.push(url),
+});
+await fallbackPlayer.start;
+assert.deepEqual(fallbackShown, ["good-preview"]);
+fallbackPlayer.stop();
+MockImage.fail.clear();
+
+// Once a fallback succeeds, revisiting the same collection/index tries that
+// resolved URL first instead of repeating the known-bad preferred variant.
+MockImage.fail.add("bad-resolved");
+const resolvedStart = images.length;
+const resolvedPhotos = [0, 1, 2].map((id) => ({
+  id: 200 + id,
+  width: 100,
+  height: 100,
+  filename: "resolved-" + id + ".jpg",
+}));
+const resolvedPlayer = Player.create({
+  client: {
+    photoCount: async () => resolvedPhotos.length,
+    photoAt: async (c, i) => resolvedPhotos[i],
+    previewCandidates: (photo) => ["bad-resolved", "good-resolved-" + photo.id],
+  },
+  collections: ["resolved"],
+  shuffle: false,
+  duration: 9999,
+  onPhoto: () => {},
+});
+await resolvedPlayer.start;
+for (let i = 0; i < 3; i++) {
+  resolvedPlayer.next();
+  await new Promise((r) => setTimeout(r, 10));
+}
+const resolvedLoads = images.slice(resolvedStart);
+assert.equal(resolvedLoads.filter((url) => url === "bad-resolved").length, 3);
+assert.equal(resolvedLoads.filter((url) => url === "good-resolved-200").length, 2);
+resolvedPlayer.stop();
+MockImage.fail.clear();
+
+// Exhausting every candidate counts as a slideshow error and eventually
+// trips the circuit breaker instead of spinning forever.
+MockImage.fail.add("server-down");
+const failures = [];
+const brokenPlayer = Player.create({
+  client: {
+    photoCount: async () => 1,
+    photoAt: async () => fallbackPhoto,
+    previewCandidates: () => ["server-down"],
+  },
+  collections: ["broken"],
+  shuffle: false,
+  duration: 9999,
+  onPhoto: () => {},
+  onError: (error) => failures.push(error),
+});
+await brokenPlayer.start;
+await new Promise((r) => setTimeout(r, 30));
+assert.equal(failures.filter((error) => error.code !== "STOPPED").length, 5);
+assert.equal(failures.at(-1).code, "STOPPED");
+brokenPlayer.stop();
+MockImage.fail.clear();
 
 console.log("player.test.mjs OK");

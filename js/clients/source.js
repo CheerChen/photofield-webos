@@ -14,9 +14,10 @@
  *   photoCount(collectionId) -> Promise<number>
  *   photoAt(collectionId, i) -> Promise<Photo|null>   (null = hole, skip it)
  *   slice(collectionId, y, h)-> Promise<[{i, x, y, w, h, photo}]>  grid rows
- *   thumbUrl(photo)          -> small grid thumbnail (~256px)
- *   previewUrl(photo, width) -> fullscreen-size image
- *   originalUrl(photo)       -> untouched file bytes
+ *   thumbCandidates(photo, width)   -> ordered grid-thumbnail URLs
+ *   previewCandidates(photo, width) -> ordered fullscreen-image URLs
+ *   thumbUrl/previewUrl              -> preferred URL compatibility helpers
+ *   originalUrl(photo)               -> untouched file bytes
  *
  * Photo = {id, width, height, takenAt, isVideo, filename}
  */

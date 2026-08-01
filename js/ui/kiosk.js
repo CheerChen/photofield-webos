@@ -15,6 +15,9 @@
   let returnTo = "sources";
   let collectionNames = {};
   let hintTimer = null;
+  let openGeneration = 0;
+  let frameGeneration = 0;
+  let pendingFrameRequest = null;
 
   // Show the lofi controls hint for a few seconds on entry, then fade it
   // out — the kiosk has no hintbar (immersive), so without this the bundled
@@ -50,58 +53,106 @@
     frame.querySelector(".kiosk-backdrop").style.backgroundImage = "";
   }
 
-  function crossfade(photo, url) {
+  function cancelPendingFrame() {
+    frameGeneration++;
+    if (pendingFrameRequest) pendingFrameRequest.cancel();
+    pendingFrameRequest = null;
+  }
+
+  function previewCandidates(photo, preferred) {
+    const listed = client.previewCandidates
+      ? client.previewCandidates(photo, 1920)
+      : [client.previewUrl(photo, 1920)];
+    const candidates = Array.isArray(listed) ? listed.filter(Boolean) : [listed];
+    return preferred
+      ? [preferred, ...candidates.filter((url) => url !== preferred)]
+      : candidates;
+  }
+
+  function cssUrl(url) {
+    return 'url("' + String(url).replace(/"/g, "%22") + '")';
+  }
+
+  function crossfade(photo, url, openId, owner) {
     const a = $("kiosk-a");
     const b = $("kiosk-b");
     const next = front === a ? b : a;
     const fit = window.Store.get("fitMode") || "ambient";
     const portrait = photo.height > photo.width;
-    const backdropUrl = client.previewUrl(photo, 640);
-    // The blurred backdrop is only displayed for ambient portrait photos,
-    // so only wait on it in that case; otherwise preloading it is wasted.
     const needBackdrop = portrait && fit === "ambient";
+    const frameId = ++frameGeneration;
+    if (pendingFrameRequest) pendingFrameRequest.cancel();
 
-    next.classList.remove("fit-ambient", "fit-contain", "fit-cover", "portrait");
-    next.classList.add("fit-" + fit);
-    next.classList.toggle("portrait", portrait);
-    // Set the background images now, but gate the opacity transition on the
-    // images being decoded: without this, a slow network fades in a black
-    // frame that pops to the photo mid-transition, breaking the crossfade.
-    next.querySelector(".kiosk-photo").style.backgroundImage = 'url("' + url + '")';
-    next.querySelector(".kiosk-backdrop").style.backgroundImage = 'url("' + backdropUrl + '")';
+    // The player has already resolved a candidate while preloading. Keep it
+    // first, but retain the complete chain in case the file disappears before
+    // the CSS background is installed.
+    const request = window.ImageLoader.load(previewCandidates(photo, url));
+    pendingFrameRequest = request;
+    request.promise.then((result) => {
+      if (
+        openGeneration !== openId ||
+        player !== owner ||
+        frameGeneration !== frameId
+      ) return;
 
-    let loaded = 0;
-    const total = needBackdrop ? 2 : 1;
-    function done() {
-      loaded++;
-      if (loaded < total) return;
+      const loadedUrl = result.url;
+      next.classList.remove("fit-ambient", "fit-contain", "fit-cover", "portrait");
+      next.classList.add("fit-" + fit);
+      next.classList.toggle("portrait", portrait);
+      // Use the URL that actually loaded. Using the first candidate here
+      // would make a successful fallback render as a broken black frame.
+      next.querySelector(".kiosk-photo").style.backgroundImage = cssUrl(loadedUrl);
+      next.querySelector(".kiosk-backdrop").style.backgroundImage = needBackdrop
+        ? cssUrl(loadedUrl)
+        : "";
       next.classList.add("visible");
       if (front) front.classList.remove("visible");
       front = next;
-    }
-    const main = new Image();
-    main.onload = done;
-    main.onerror = done; // don't strand the frame on a failed load
-    main.src = url;
-    if (needBackdrop) {
-      const back = new Image();
-      back.onload = done;
-      back.onerror = done;
-      back.src = backdropUrl;
-    }
+      $("kiosk-loading").hidden = true;
+      $("kiosk-date").textContent = fmtDate(photo.takenAt);
+      $("kiosk-name").textContent = photo.filename;
+      if (pendingFrameRequest === request) pendingFrameRequest = null;
+    }).catch((error) => {
+      if (pendingFrameRequest === request) pendingFrameRequest = null;
+      if (
+        (error && error.code === "CANCELLED") ||
+        openGeneration !== openId ||
+        player !== owner ||
+        frameGeneration !== frameId
+      ) return;
+
+      // Do not expose the staging frame and do not touch the current frame.
+      // The player advances and counts this as an image failure.
+      resetFrame(next);
+      owner.reportImageError(error);
+    });
   }
 
   function clearMusicIndicator() {
     $("kiosk-music").hidden = true;
   }
 
-  function applyMusicState(state) {
-    if (!state || !state.playing) return;
+  function renderMusicIndicator(state) {
+    if (!state || !state.playing) {
+      clearMusicIndicator();
+      return;
+    }
     $("kiosk-music-dot").style.background = MUSIC_DOTS[state.color];
     $("kiosk-music-name").textContent = state.track.name + " · " + (state.index + 1) + "/" + state.total;
     $("kiosk-music").hidden = false;
-    window.App.toast(state.track.name);
   }
+
+  function applyMusicState(state, announce) {
+    renderMusicIndicator(state);
+    if (announce && state && state.playing) window.App.toast(state.track.name);
+  }
+
+  // Music advances itself when an Audio element emits `ended`. Subscribe to
+  // those transitions so the floating indicator follows automatic track and
+  // color changes instead of remaining stuck on the manually selected song.
+  window.Music.subscribe((state) => {
+    if (window.Keys.current() === "kiosk") renderMusicIndicator(state);
+  });
 
   async function toggleMusic(color) {
     const state = await window.Music.toggle(color);
@@ -114,7 +165,7 @@
       clearMusicIndicator();
       return window.App.toast(state.track.name + " · 已关闭");
     }
-    applyMusicState(state);
+    applyMusicState(state, true);
   }
 
   // Up/Down step through the active color's playlist. No-op when music is off.
@@ -127,10 +178,27 @@
       return window.App.toast("音乐播放失败");
     }
     if (!state.playing) return;
-    applyMusicState(state);
+    applyMusicState(state, true);
+  }
+
+  function startAutoMusic(nextPlayer, openId) {
+    if (window.Store.get("autoLofi") === false) return;
+    window.Music.autoStart().then((state) => {
+      if (openGeneration !== openId || player !== nextPlayer || !state || state.stale) return;
+      if (state.error) {
+        clearMusicIndicator();
+        window.App.toast("音乐播放失败");
+      }
+    }).catch(() => {
+      if (openGeneration !== openId || player !== nextPlayer) return;
+      clearMusicIndicator();
+      window.App.toast("音乐播放失败");
+    });
   }
 
   function leave() {
+    openGeneration++;
+    cancelPendingFrame();
     if (player) player.stop();
     player = null;
     window.Music.stop();
@@ -153,6 +221,8 @@
      */
     async open(source, collectionIds, opts) {
       opts = opts || {};
+      const openId = ++openGeneration;
+      cancelPendingFrame();
       returnTo = window.Keys.current() || "sources";
       if (returnTo === "kiosk") returnTo = "sources";
       window.App.show("kiosk");
@@ -184,11 +254,16 @@
           countsMap[c.id] = c.count;
         }
       } catch (e) {
+        if (openId !== openGeneration) return;
         $("kiosk-loading").hidden = true;
+        window.Music.stop();
+        clearMusicIndicator();
+        window.Screensaver.allow();
         window.App.toast("无法连接 " + source.name, 6000, "error");
         window.App.back();
         return;
       }
+      if (openId !== openGeneration) return;
 
       const counts = collectionIds.map((id) => countsMap[id] || 0);
       const nextPlayer = window.Player.create({
@@ -199,13 +274,16 @@
         start: opts.start,
         duration: window.Store.get("duration"),
         onPhoto(photo, url, pos, totalCount) {
-          $("kiosk-loading").hidden = true;
-          crossfade(photo, url);
-          $("kiosk-date").textContent = fmtDate(photo.takenAt);
-          $("kiosk-name").textContent = photo.filename;
+          if (openId !== openGeneration || player !== nextPlayer) return;
+          crossfade(photo, url, openId, nextPlayer);
+        },
+        onNavigate() {
+          if (openId === openGeneration && player === nextPlayer) cancelPendingFrame();
         },
         onError(e) {
+          if (openId !== openGeneration || player !== nextPlayer) return;
           if (e && e.code === "STOPPED") {
+            cancelPendingFrame();
             $("kiosk-loading").hidden = true;
             window.Music.stop();
             clearMusicIndicator();
@@ -218,13 +296,19 @@
           }
         },
       });
+      if (openId !== openGeneration) {
+        nextPlayer.stop();
+        return;
+      }
       player = nextPlayer;
+      startAutoMusic(nextPlayer, openId);
       nextPlayer.start.catch((e) => {
-        if (player !== nextPlayer) return;
+        if (openId !== openGeneration || player !== nextPlayer) return;
         $("kiosk-loading").hidden = true;
         window.Music.stop();
         clearMusicIndicator();
         player = null;
+        window.Screensaver.allow();
         window.App.toast("播放失败：" + e.message, 6000, "error");
         window.App.back();
       });

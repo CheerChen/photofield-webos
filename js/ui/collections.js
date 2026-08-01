@@ -62,13 +62,23 @@
         const photo = await client.photoAt(c.id, 0);
         if (gen !== coverGen) return;
         if (photo) {
-          slot.innerHTML = "";
+          const candidates = client.thumbCandidates
+            ? client.thumbCandidates(photo, 640)
+            : [client.thumbUrl(photo, 640)];
           const img = document.createElement("img");
-          img.src = client.thumbUrl(photo, 640); // covers render at ~410px wide
+          const request = window.ImageLoader.load(candidates, img);
+          slot._imageRequest = request;
+          await request.promise;
+          if (gen !== coverGen) {
+            request.cancel();
+            return;
+          }
+          slot.innerHTML = "";
           slot.appendChild(img);
           slot.dataset.done = "1";
         }
       } catch (e) {
+        if (gen !== coverGen) return;
         errors++;
         if (errors === 1) {
           window.App.toast("服务器错误，封面加载失败");

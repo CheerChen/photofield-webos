@@ -11,10 +11,11 @@ TV app（file:// 直连，无网关）
   js/clients/source.js       源发现、缓存与 client 契约
   js/clients/photofield.js   Photofield 适配（scene 生命周期封装）
   js/core/player.js          幻灯片引擎（3 图内存窗口）
+  js/core/image-loader.js    变体候选链的统一图片加载与回退
   js/ui/                     sources / collections / grid / viewer / kiosk / pin / settings
 ```
 
-源契约：`collections() / photoCount() / photoAt() / slice() / thumbUrl() / previewUrl() / originalUrl()`。如需接入其他上游服务，可新增一个实现该契约的 client 模块。
+源契约：`collections() / photoCount() / photoAt() / slice() / thumbCandidates() / previewCandidates() / originalUrl()`。`thumbUrl()` 与 `previewUrl()` 仅保留为首选 URL 兼容助手。如需接入其他上游服务，可新增一个实现该契约的 client 模块。
 
 ## 服务器发现
 

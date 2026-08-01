@@ -12,9 +12,10 @@
   let total = 0;
   let scrollY = 0;
   const slices = new Map(); // sliceY -> [{i,x,y,w,h,photo}]
-  const pending = new Set();
+  const pending = new Map();
   const cells = new Map(); // i -> element
   let focused = null; // current focused item {i,x,y,w,h,photo}
+  let openGeneration = 0;
 
   function sliceKey(y) {
     return Math.floor(y / SLICE_H) * SLICE_H;
@@ -39,7 +40,17 @@
       cell.style.height = it.h + "px";
       const img = document.createElement("img");
       img.loading = "lazy";
-      img.src = client.thumbUrl(it.photo, 512); // FLEX cells run ~280-600px wide
+      const candidates = client.thumbCandidates
+        ? client.thumbCandidates(it.photo, 512)
+        : [client.thumbUrl(it.photo, 512)];
+      const request = window.ImageLoader.load(candidates, img);
+      cell._imageRequest = request;
+      request.promise.catch(() => {
+        if (cell.parentNode) {
+          img.removeAttribute("src");
+          cell.classList.add("image-failed");
+        }
+      });
       cell.appendChild(img);
       if (it.photo.isVideo) {
         const badge = document.createElement("span");
@@ -56,29 +67,44 @@
     for (const [i, cell] of cells) {
       const y = parseFloat(cell.style.top);
       if (Math.abs(y - scrollY) > PRUNE_DIST) {
+        if (cell._imageRequest) cell._imageRequest.cancel();
         cell.remove();
         cells.delete(i);
       }
     }
   }
 
-  async function ensureSlices() {
+  function clearLoaded() {
+    for (const cell of cells.values()) {
+      if (cell._imageRequest) cell._imageRequest.cancel();
+      cell.remove();
+    }
+    cells.clear();
+    slices.clear();
+    pending.clear();
+    focused = null;
+  }
+
+  async function ensureSlices(gen = openGeneration) {
+    if (gen !== openGeneration) return;
     const first = sliceKey(scrollY - SLICE_H);
     const last = sliceKey(scrollY + SLICE_H * 2);
     for (let key = first; key <= last; key += SLICE_H) {
+      if (gen !== openGeneration) return;
       if (key < 0 || slices.has(key) || pending.has(key)) continue;
-      pending.add(key);
+      pending.set(key, gen);
       try {
         const items = await client.slice(collection.id, key, SLICE_H);
+        if (gen !== openGeneration) return;
         slices.set(key, items);
         renderSlice(key);
       } catch (e) {
         /* slice stays unfetched; next scroll retries */
       } finally {
-        pending.delete(key);
+        if (pending.get(key) === gen) pending.delete(key);
       }
     }
-    prune();
+    if (gen === openGeneration) prune();
   }
 
   function setFocused(item) {
@@ -132,7 +158,7 @@
     }
     if (best) {
       setFocused(best);
-      ensureSlices();
+      ensureSlices(openGeneration);
     }
   }
 
@@ -141,11 +167,13 @@
    * be navigated one cell at a time. Red/yellow are otherwise idle in the
    * grid. After scrolling, focus the cell nearest the viewport center. */
   async function page(dir) {
+    const gen = openGeneration;
     const vp = 1080;
     const max = Math.max(0, $("grid-canvas").offsetHeight - vp);
     scrollY = Math.max(0, Math.min(max, scrollY + dir * vp));
     $("grid-viewport").scrollTop = scrollY;
-    await ensureSlices();
+    await ensureSlices(gen);
+    if (gen !== openGeneration) return;
     const targetY = scrollY + vp / 2;
     let best = null;
     let bestDist = Infinity;
@@ -160,25 +188,28 @@
 
   window.GridScreen = {
     async open(src, col) {
+      const gen = ++openGeneration;
       source = src;
       collection = col;
       client = window.Sources.client(src);
       window.App.show("grid");
+      clearLoaded();
       $("grid-canvas").innerHTML = "";
-      slices.clear();
-      cells.clear();
-      focused = null;
       scrollY = 0;
       $("grid-viewport").scrollTop = 0;
       try {
         total = await client.photoCount(col.id);
+        if (gen !== openGeneration) return;
         const height = await client.sceneHeight(col.id);
+        if (gen !== openGeneration) return;
         $("grid-canvas").style.height = height + "px";
       } catch (e) {
+        if (gen !== openGeneration) return;
         window.App.toast("加载失败：" + e.message);
         return window.App.show(window.GridScreen.backTarget || "sources");
       }
-      await ensureSlices();
+      await ensureSlices(gen);
+      if (gen !== openGeneration) return;
       const first = slices.get(sliceKey(0));
       if (first && first.length) setFocused(first[0]);
       status();
@@ -186,7 +217,7 @@
 
     onScroll(y) {
       scrollY = y;
-      ensureSlices();
+      ensureSlices(openGeneration);
     },
 
     onKey({ key }) {
@@ -204,6 +235,8 @@
           rememberCollection: collection.id,
         });
       } else if (key === "back") {
+        openGeneration++;
+        clearLoaded();
         return window.App.show(window.GridScreen.backTarget || "sources");
       }
     },
