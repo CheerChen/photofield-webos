@@ -10,6 +10,8 @@ All notable changes to this project are documented in this file.
 - Add red/yellow key paging for large photo grids.
 - Add refreshed app icons and splash artwork, with SVG source files for regeneration.
 - Show a short Lofi control hint when kiosk playback starts.
+- Add a default-on Kiosk Lofi autoplay setting with shuffled color cycles.
+- Expand each colour playlist to seven tracks and regroup them by visual theme.
 
 ### Changed
 

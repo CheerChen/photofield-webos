@@ -15,6 +15,10 @@
     { id: "shuffle", label: "随机播放" },
     { id: "sequential", label: "顺序播放" },
   ];
+  const LOFI_AUTOPLAY = [
+    { id: true, label: "开启" },
+    { id: false, label: "关闭" },
+  ];
   let focusIdx = 0;
   let returnTo = "sources";
 
@@ -28,6 +32,7 @@
       { key: "duration", label: "播放间隔", value: window.Store.get("duration") + " 秒" },
       { key: "fitMode", label: "相片填充", value: current(FIT_MODES, "fitMode").label },
       { key: "playOrder", label: "播放顺序", value: current(PLAY_ORDERS, "playOrder").label },
+      { key: "autoLofi", label: "进入 Kiosk 自动播放 Lofi", value: current(LOFI_AUTOPLAY, "autoLofi").label },
       { key: "host", label: "服务器地址", value: window.Store.get("photofield.host") || "192.168.0.110" },
       { key: "rescan", label: "重新扫描实例", value: "" },
       // PIN row hidden: no source is currently locked. Re-add when a locked
@@ -62,6 +67,8 @@
       cycle("fitMode", FIT_MODES, dir);
     } else if (row.key === "playOrder") {
       cycle("playOrder", PLAY_ORDERS, dir);
+    } else if (row.key === "autoLofi") {
+      cycle("autoLofi", LOFI_AUTOPLAY, dir);
     } else if (row.key === "host") {
       // Host editing is handled by OK (opens the full IP input overlay);
       // left/right do nothing here. The old +-1 last-octet cycle made
