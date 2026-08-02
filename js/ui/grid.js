@@ -162,30 +162,6 @@
     }
   }
 
-  /* Page up/down by one viewport. Long-press is filtered globally in
-   * keys.js, so without these keys a multi-thousand-photo album can only
-   * be navigated one cell at a time. Red/yellow are otherwise idle in the
-   * grid. After scrolling, focus the cell nearest the viewport center. */
-  async function page(dir) {
-    const gen = openGeneration;
-    const vp = 1080;
-    const max = Math.max(0, $("grid-canvas").offsetHeight - vp);
-    scrollY = Math.max(0, Math.min(max, scrollY + dir * vp));
-    $("grid-viewport").scrollTop = scrollY;
-    await ensureSlices(gen);
-    if (gen !== openGeneration) return;
-    const targetY = scrollY + vp / 2;
-    let best = null;
-    let bestDist = Infinity;
-    for (const items of slices.values()) {
-      for (const it of items) {
-        const d = Math.abs(it.y + it.h / 2 - targetY);
-        if (d < bestDist) { bestDist = d; best = it; }
-      }
-    }
-    if (best) setFocused(best);
-  }
-
   window.GridScreen = {
     async open(src, col) {
       const gen = ++openGeneration;
@@ -225,8 +201,6 @@
       else if (key === "right") move(1, 0);
       else if (key === "up") move(0, -1);
       else if (key === "down") move(0, 1);
-      else if (key === "red") page(-1);
-      else if (key === "yellow") page(1);
       else if (key === "ok" && focused) {
         window.ViewerScreen.open(source, collection, focused.i);
       } else if ((key === "play" || key === "green") && focused) {
