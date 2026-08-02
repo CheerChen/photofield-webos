@@ -7,7 +7,7 @@
     { id: "kiosk", label: "直接播放上次源" },
   ];
   const FIT_MODES = [
-    { id: "ambient", label: "竖图氛围填充" },
+    { id: "ambient", label: "氛围填充" },
     { id: "contain", label: "完整显示" },
     { id: "cover", label: "裁切填满" },
   ];

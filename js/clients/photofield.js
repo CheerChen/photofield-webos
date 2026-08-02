@@ -337,8 +337,15 @@
       },
 
       originalUrl(photo) {
-        return base + "/api/files/" + photo.id + "/original/" +
-          encodeURIComponent(photo.filename);
+        return originalUrl(photo);
+      },
+
+      // Videos are intentionally served as the untouched source. Photofield
+      // does not transcode or expose HLS; the client decides whether the
+      // browser can decode this URL and falls back to the already-loaded
+      // preview when it cannot.
+      videoUrl(photo) {
+        return originalUrl(photo);
       },
 
       /* Trigger a filesystem rescan for one collection. Photofield returns

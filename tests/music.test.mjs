@@ -5,6 +5,7 @@ import assert from "node:assert/strict";
 const calls = [];
 class MockAudio {
   static defer = false;
+  static rejectNext = false;
   static pending = [];
   static lastInstance = null;
 
@@ -14,6 +15,7 @@ class MockAudio {
     this.loop = false;
     this.volume = 1;
     this.preload = "";
+    this.ended = false;
     this._listeners = {};
     MockAudio.lastInstance = this;
   }
@@ -23,8 +25,19 @@ class MockAudio {
   emit(type) {
     for (const fn of this._listeners[type] || []) fn();
   }
+  // Media elements fire pause immediately before ended when playback
+  // completes naturally; tests use this to match real browser event order.
+  finish() {
+    this.ended = true;
+    this.emit("pause");
+    this.emit("ended");
+  }
   play() {
     calls.push(["play", this.src]);
+    if (MockAudio.rejectNext) {
+      MockAudio.rejectNext = false;
+      return Promise.reject(new Error("audio focus unavailable"));
+    }
     if (!MockAudio.defer) return Promise.resolve();
     return new Promise((resolve) => MockAudio.pending.push(resolve));
   }
@@ -98,7 +111,7 @@ state = await Music.autoStart();
 assert.equal(state.color, "red", "random 0 selects the first color");
 const firstCycle = [state.track.src];
 for (let i = 1; i < redTracks.length; i++) {
-  MockAudio.lastInstance.emit("ended");
+  MockAudio.lastInstance.finish();
   await new Promise((resolve) => setTimeout(resolve, 0));
   state = Music.active();
   assert.equal(state.color, "red");
@@ -108,7 +121,7 @@ for (let i = 1; i < redTracks.length; i++) {
 assert.equal(new Set(firstCycle).size, redTracks.length, "one color cycle covers each track once");
 
 // Only after the whole red cycle does playback choose a different color.
-MockAudio.lastInstance.emit("ended");
+MockAudio.lastInstance.finish();
 await new Promise((resolve) => setTimeout(resolve, 0));
 state = Music.active();
 assert.ok(colors.includes(state.color));
@@ -133,6 +146,69 @@ assert.equal(Music.active(), null);
 MockAudio.pending.shift()();
 assert.equal((await opening).stale, true);
 MockAudio.defer = false;
+
+// Suspending a playing color pauses the element but keeps its shuffled cycle
+// position, and resume continues that exact track. The element itself is
+// rebuilt: a suspended element's media pipeline may be gone on webOS, so
+// resume must start fresh and seek back to the suspension offset.
+state = await Music.toggle("red");
+state = await Music.next();
+const suspendedIndex = state.index;
+const suspendedAudio = MockAudio.lastInstance;
+suspendedAudio.currentTime = 42;
+state = Music.suspend();
+assert.equal(state.playing, false);
+assert.equal(Music.active().color, "red");
+assert.equal(Music.active().index, suspendedIndex);
+assert.equal(observed.at(-1).playing, false);
+state = await Music.resume();
+assert.equal(state.playing, true);
+assert.equal(state.color, "red");
+assert.equal(state.index, suspendedIndex);
+assert.notEqual(MockAudio.lastInstance, suspendedAudio, "resume rebuilds a fresh Audio element");
+assert.equal(MockAudio.lastInstance.src, state.track.src);
+assert.equal(MockAudio.lastInstance.currentTime, 42, "resume seeks back to the suspension offset");
+
+// Switching color while suspended clears the suspension; toggling the active
+// color off also clears it so a later resume cannot resurrect playback.
+Music.suspend();
+state = await Music.toggle("green");
+assert.equal(state.playing, true);
+Music.suspend();
+state = await Music.toggle("green");
+assert.equal(state.playing, false);
+assert.equal(await Music.resume(), null);
+assert.equal(Music.active(), null);
+
+// A pause not initiated by Music (the webOS media-focus case) updates the
+// logical state and notifies the indicator without changing the active track.
+// It counts as a suspension, so a later resume() restarts the same track on
+// the same element instead of leaving playback dead.
+state = await Music.toggle("blue");
+const externallyPaused = MockAudio.lastInstance;
+externallyPaused.currentTime = 7;
+externallyPaused.emit("pause");
+assert.equal(Music.active().playing, false);
+assert.equal(Music.active().color, "blue");
+assert.equal(observed.at(-1).playing, false);
+state = await Music.resume();
+assert.equal(state.playing, true);
+assert.equal(state.color, "blue");
+assert.notEqual(MockAudio.lastInstance, externallyPaused, "external-pause resume rebuilds the element");
+assert.equal(MockAudio.lastInstance.currentTime, 7, "external-pause resume keeps the position");
+
+// A rejected resume (webOS still tearing down a video pipeline) must not
+// cancel the active color: the suspension survives and a retry succeeds.
+Music.suspend();
+MockAudio.rejectNext = true;
+state = await Music.resume();
+assert.equal(state.playing, false);
+assert.ok(state.error);
+assert.equal(Music.active().color, "blue", "failed resume keeps the color suspended");
+state = await Music.resume();
+assert.equal(state.playing, true);
+assert.equal(state.color, "blue");
+Music.stop();
 unsubscribe();
 Math.random = originalRandom;
 

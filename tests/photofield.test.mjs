@@ -48,6 +48,10 @@ assert.equal(
   client.originalUrl(photo),
   "http://photos/api/files/7/original/folder%2Fphoto%20one.jpg"
 );
+assert.equal(
+  client.videoUrl(photo),
+  "http://photos/api/files/7/original/folder%2Fphoto%20one.jpg"
+);
 assert.equal(client.previewUrl(photo, 1920), client.previewCandidates(photo, 1920)[0]);
 
 const large = { ...photo, width: 5000, height: 3000 };

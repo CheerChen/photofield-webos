@@ -58,7 +58,14 @@
   let audio = null;
   let activeColor = null;
   let playing = false;
+  let suspended = false;
+  let suspendOffset = 0;
+  let resumeRetryTimer = null;
   let generation = 0;
+  // Delay before retrying a resume whose play() was rejected, typically
+  // because webOS is still tearing down the media pipeline of a just-released
+  // video element.
+  const RESUME_RETRY_MS = 600;
   const listeners = new Set();
 
   function randomIndex(length) {
@@ -114,6 +121,19 @@
     }
   }
 
+  // Mark pauses initiated by this controller so a platform-level pause event
+  // cannot turn an intentional suspend/stop into a false external transition.
+  // All internal callers also clear `playing` before pausing, so a late event
+  // remains harmless even on runtimes that dispatch `pause` asynchronously.
+  function pauseForMusic(el) {
+    if (!el) return;
+    el._musicPause = true;
+    try { el.pause(); } catch (e) { /* ignore */ }
+    const clear = () => { el._musicPause = false; };
+    if (typeof queueMicrotask === "function") queueMicrotask(clear);
+    else setTimeout(clear, 0);
+  }
+
   function randomColor(exclude) {
     const choices = COLORS.filter((color) => color !== exclude);
     return choices[randomIndex(choices.length)] || exclude || COLORS[0];
@@ -153,6 +173,26 @@
       // Do not leave a rejected async transition as an unhandled promise.
       advanceAfterEnded().catch(() => {});
     });
+    el.addEventListener("pause", () => {
+      if (audio !== el) return;
+      if (el._musicPause) {
+        el._musicPause = false;
+        return;
+      }
+      // A media element fires pause immediately before ended when a track
+      // finishes naturally. That pause belongs to the ended handler's
+      // advance, not to an external interruption.
+      if (el.ended) return;
+      // webOS may pause an Audio element when a video claims the media
+      // pipeline. Keep the logical state and indicator synchronized even
+      // though no JavaScript called pause(), and treat the focus loss as a
+      // suspension so a later resume() restarts this exact track.
+      if (!playing) return;
+      playing = false;
+      suspended = !!activeColor;
+      suspendOffset = el.currentTime || 0;
+      notify(snapshot());
+    });
     return el;
   }
 
@@ -163,7 +203,10 @@
 
   function replaceAudio() {
     if (audio) {
-      audio.pause();
+      // A manual track/color change is an internal pause. Clear state first so
+      // a delayed platform pause event cannot report a phantom interruption.
+      playing = false;
+      pauseForMusic(audio);
       audio.src = "";
     }
     audio = createAudio();
@@ -235,6 +278,7 @@
 
   function startColor(color) {
     if (!TRACKS[color]) throw new Error("unknown lofi track");
+    suspended = false;
     beginPlaylist(color);
     return loadCurrent(color);
   }
@@ -248,9 +292,10 @@
       const state = snapshot();
       const el = ensureAudio();
       generation++;
-      el.pause();
       activeColor = null;
       playing = false;
+      suspended = false;
+      pauseForMusic(el);
       notify(null);
       return Object.assign({}, state, { playing: false });
     }
@@ -262,6 +307,7 @@
   // wraps within that color; only natural track completion changes colors.
   async function step(delta) {
     if (!activeColor) return null;
+    suspended = false;
     const color = activeColor;
     const order = playlists[color];
     playlistPos[color] = (playlistPos[color] + delta + order.length) % order.length;
@@ -272,14 +318,136 @@
     return startColor(randomColor(null));
   }
 
-  function stop() {
-    generation++;
-    if (audio) {
-      audio.pause();
-      audio.currentTime = 0;
+  function clearResumeRetry() {
+    if (resumeRetryTimer) {
+      clearTimeout(resumeRetryTimer);
+      resumeRetryTimer = null;
     }
+  }
+
+  function suspend() {
+    // A pending resume retry must never fire into the suspension a new video
+    // session just requested, so kill it even when already suspended.
+    clearResumeRetry();
+    if (!activeColor || !audio || suspended) return snapshot();
+    suspended = true;
+    suspendOffset = audio.currentTime || 0;
+    if (playing) {
+      generation++;
+      playing = false;
+      pauseForMusic(audio);
+      notify(snapshot());
+    }
+    return snapshot();
+  }
+
+  async function resume() {
+    clearResumeRetry();
+    if (!suspended) return snapshot();
+    if (!activeColor || !audio || !playlists[activeColor]) {
+      suspended = false;
+      return null;
+    }
+
+    const color = activeColor;
+    const order = playlists[color];
+    const position = playlistPos[color];
+    const current = currentTrack(color, position);
+    // The suspended element's media pipeline was torn down while a video
+    // owned it; on webOS such an element can accept play() yet stay silent.
+    // Resume on a fresh element like every other playback path, then seek
+    // back to where the suspension happened.
+    const offset = suspendOffset;
+    const el = replaceAudio();
+    el.src = current.track.src;
+    el.currentTime = 0;
+    const op = ++generation;
+    playing = false;
+
+    try {
+      const started = el.play();
+      if (started && typeof started.then === "function") await started;
+      if (
+        op !== generation ||
+        activeColor !== color ||
+        audio !== el ||
+        !suspended
+      ) {
+        return {
+          color,
+          track: current.track,
+          playing: false,
+          index: position,
+          playlistIndex: position,
+          trackIndex: current.trackIndex,
+          total: order.length,
+          stale: true,
+        };
+      }
+      playing = true;
+      suspended = false;
+      suspendOffset = 0;
+      if (offset > 0) {
+        // Seek only after play() settles: setting currentTime on a fresh
+        // element before its metadata loads is unreliable on webOS Chromium.
+        try { el.currentTime = offset; } catch (e) { /* restart from 0 */ }
+      }
+      const state = snapshot();
+      notify(state);
+      return state;
+    } catch (error) {
+      if (
+        op !== generation ||
+        activeColor !== color ||
+        audio !== el ||
+        !suspended
+      ) {
+        return {
+          color,
+          track: current.track,
+          playing: false,
+          index: position,
+          playlistIndex: position,
+          trackIndex: current.trackIndex,
+          total: order.length,
+          stale: true,
+        };
+      }
+      // A rejected play() here is usually webOS still tearing down the media
+      // pipeline of a just-released video, not a broken track. Stay suspended
+      // with the cycle position intact — the kiosk retries on every non-video
+      // commit — and schedule one quick retry in case no commit is imminent.
+      playing = false;
+      resumeRetryTimer = setTimeout(() => {
+        resumeRetryTimer = null;
+        if (generation === op && suspended && activeColor === color) {
+          resume().catch(() => {});
+        }
+      }, RESUME_RETRY_MS);
+      return {
+        color,
+        track: current.track,
+        playing: false,
+        index: position,
+        playlistIndex: position,
+        trackIndex: current.trackIndex,
+        total: order.length,
+        error,
+      };
+    }
+  }
+
+  function stop() {
+    clearResumeRetry();
+    generation++;
     activeColor = null;
     playing = false;
+    suspended = false;
+    suspendOffset = 0;
+    if (audio) {
+      pauseForMusic(audio);
+      audio.currentTime = 0;
+    }
     notify(null);
   }
 
@@ -295,6 +463,8 @@
     toggle,
     next: () => step(1),
     prev: () => step(-1),
+    suspend,
+    resume,
     stop,
     active: snapshot,
   };

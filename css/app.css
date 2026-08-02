@@ -220,10 +220,17 @@ html, body {
   align-items: center;
   justify-content: center;
 }
-.viewer-stage img {
+.viewer-stage img,
+.viewer-stage video {
   max-width: 1920px;
   max-height: 1080px;
   object-fit: contain;
+  display: block;
+}
+.viewer-stage video {
+  width: 100%;
+  height: 100%;
+  background: #000;
 }
 .viewer-meta {
   position: absolute;
@@ -243,15 +250,36 @@ html, body {
   background: #000;
   opacity: 0;
   transition: opacity 1.2s ease;
+  /* Own stacking context: without this a fully visible frame (opacity 1)
+     lets its z-indexed photo/video layers paint above the meta/music
+     overlays that follow in the DOM. */
+  z-index: 0;
 }
 .kiosk-frame.visible { opacity: 1; }
 .kiosk-backdrop,
-.kiosk-photo {
+.kiosk-photo,
+.kiosk-video-slot {
   position: absolute;
   inset: 0;
   background-position: center;
   background-repeat: no-repeat;
 }
+.kiosk-backdrop { z-index: 0; }
+.kiosk-photo { z-index: 1; }
+.kiosk-video-slot {
+  z-index: 2;
+  pointer-events: none;
+}
+.kiosk-video-slot video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  opacity: 0;
+  transition: opacity 0.35s ease;
+}
+.kiosk-video-slot video.ready { opacity: 1; }
 .kiosk-backdrop {
   inset: -48px;
   display: none;
@@ -261,8 +289,10 @@ html, body {
 }
 .kiosk-photo { background-size: contain; }
 .kiosk-frame.fit-cover .kiosk-photo { background-size: cover; }
-.kiosk-frame.fit-ambient.portrait .kiosk-backdrop { display: block; }
-.kiosk-frame.fit-ambient.portrait .kiosk-photo { inset: 24px; }
+.kiosk-frame.fit-cover .kiosk-video-slot video { object-fit: cover; }
+.kiosk-frame.fit-ambient .kiosk-backdrop { display: block; }
+.kiosk-frame.fit-ambient .kiosk-photo { inset: 24px; }
+.kiosk-frame.fit-ambient .kiosk-video-slot { inset: 24px; }
 .kiosk-meta {
   position: absolute;
   left: 72px;
