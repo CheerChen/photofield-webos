@@ -15,6 +15,11 @@
   // honors image_height — 300px rows give ~29 photos per 1080p screen.
   const GRID_LAYOUT = "FLEX";
   const GRID_IMAGE_H = 300;
+  // Decoded-bitmap budget per surface: fullscreen holds at most three images
+  // (the player window), but the grid decodes about 29 cells per screen, so it
+  // gets a stricter cap. Animated GIFs are never admitted as originals.
+  const ORIGINAL_MAX_EDGE_PREVIEW = 4096;
+  const ORIGINAL_MAX_EDGE_THUMB = 2048;
   const SCENE_POLL_MS = 800;
   const SCENE_POLL_MAX = 120; // ~96s worst case for a fresh index
 
@@ -141,59 +146,122 @@
       return Number.isFinite(width) ? width : 0;
     }
 
-    function variantUrl(photo, variant) {
-      if (!variant || !variant.name || !variant.filename) return null;
-      return base + "/api/files/" + photo.id + "/variants/" +
-        encodeURIComponent(variant.name) + "/" + encodeURIComponent(variant.filename);
+    function variantName(variant) {
+      return String(variant && variant.name || "").toLowerCase();
     }
 
-    function candidateUrls(photo, variants, preferred, want, dynamicWidth) {
-      const ordered = [];
-      const add = (url) => {
-        if (url && !ordered.includes(url)) ordered.push(url);
-      };
-      const addVariant = (variant) => add(variantUrl(photo, variant));
+    /* Photofield exposes both persistent files and virtual sources in the
+     * thumbnails list. Only the known dJPEG/FFmpeg sources do per-request
+     * decoding; sqlite, thumb files, and embedded EXIF thumbnails are already
+     * persisted somewhere, while original is the untouched source file. */
+    function variantKind(variant) {
+      const name = variantName(variant);
+      if (/^(djpeg|ffmpeg)/.test(name)) return "dynamic";
+      if (
+        name === "sqlite" ||
+        name === "goexif" ||
+        /^thumb(?:-|$)/.test(name)
+      ) return "persistent";
+      if (name === "original") return "original";
+      return "other";
+    }
 
-      addVariant(preferred);
-      variants
-        .filter((variant) => variant !== preferred)
+    function sortVariants(variants, want) {
+      return variants
         .map((variant, index) => ({
           variant,
           index,
           distance: Math.abs(variantWidth(variant) - want),
         }))
         .sort((a, b) => a.distance - b.distance || a.index - b.index)
-        .forEach(({ variant }) => addVariant(variant));
+        .map(({ variant }) => variant);
+    }
 
-      // Unlike a generated variant, this endpoint creates the requested
-      // preview from the original on demand and is therefore the reliable
-      // end of the chain whenever the photo itself is available.
+    function variantUrl(photo, variant) {
+      if (!variant || !variant.name || !variant.filename) return null;
+      return base + "/api/files/" + photo.id + "/variants/" +
+        encodeURIComponent(variant.name) + "/" + encodeURIComponent(variant.filename);
+    }
+
+    function originalUrl(photo) {
+      return base + "/api/files/" + photo.id + "/original/" +
+        encodeURIComponent(photo.filename);
+    }
+
+    function candidateUrls(photo, variants, width) {
+      const ordered = [];
+      const add = (url) => {
+        if (url && !ordered.includes(url)) ordered.push(url);
+      };
+      variants.forEach((variant) => add(variantUrl(photo, variant)));
+
+      // Photofield's preview API calls the target-width parameter `w`.
+      // This is the final on-demand fallback after all named sources fail.
       add(base + "/api/files/" + photo.id + "/previews/" +
-        encodeURIComponent(photo.filename) + "?width=" + dynamicWidth);
+        encodeURIComponent(photo.filename) + "?w=" + width);
       return ordered;
+    }
+
+    function canUseOriginal(photo, maxEdge) {
+      if (!photo || photo.isVideo) return false;
+
+      const width = Number(photo.width);
+      const height = Number(photo.height);
+      if (
+        !Number.isFinite(width) || !Number.isFinite(height) ||
+        width <= 0 || height <= 0 || Math.max(width, height) > maxEdge
+      ) return false;
+
+      return /\.(?:jpe?g|png|webp)$/i.test(String(photo.filename || ""));
     }
 
     function thumbCandidates(photo, target) {
       const want = target || 384;
-      const variants = (photo.thumbnails || []).filter((t) => t && t.name !== "original");
-      const preferred = variants
-        .filter((t) => variantWidth(t) >= want)
-        .sort((a, b) => variantWidth(a) - variantWidth(b))[0] ||
-        variants.slice().sort((a, b) => variantWidth(b) - variantWidth(a))[0];
-      return candidateUrls(photo, variants, preferred, want, want);
+      const variants = (photo.thumbnails || [])
+        .filter((variant) => variant && variantKind(variant) !== "original");
+      const persistent = variants.filter((variant) => variantKind(variant) === "persistent");
+      const sqlite = persistent.filter((variant) => variantName(variant) === "sqlite");
+      const otherPersistent = persistent.filter((variant) => variantName(variant) !== "sqlite");
+      const other = variants.filter((variant) => variantKind(variant) === "other");
+      const dynamic = variants.filter((variant) => variantKind(variant) === "dynamic");
+      const persistentFallback = [
+        ...sortVariants(sqlite, want),
+        ...sortVariants(otherPersistent, want),
+        ...sortVariants(other, want),
+      ];
+      const dynamicFallback = sortVariants(dynamic, want);
+
+      const eligible = canUseOriginal(photo, ORIGINAL_MAX_EDGE_THUMB);
+      // A photo that is only over the pixel cap should render from a dynamic
+      // source rather than becoming soft from the 256px SQLite thumbnail.
+      // Videos and unsupported formats keep the cheap persistent order.
+      const oversizePhoto = !eligible && canUseOriginal(photo, Infinity);
+
+      if (eligible) {
+        return [
+          originalUrl(photo),
+          ...candidateUrls(photo, [...persistentFallback, ...dynamicFallback], want),
+        ];
+      }
+      if (oversizePhoto) {
+        return candidateUrls(photo, [...dynamicFallback, ...persistentFallback], want);
+      }
+      return candidateUrls(photo, [...persistentFallback, ...dynamicFallback], want);
     }
 
     function previewCandidates(photo, width) {
-      // Prefer a pre-generated variant near the target size: indexing
-      // already produced e.g. ffmpeg-1280x1280-in, so the server just
-      // reads a file instead of resizing on the pi's CPU. The rest of the
-      // variants are still useful fallbacks when that file is absent.
       const want = width || 1920;
-      const variants = (photo.thumbnails || []).filter(Boolean);
-      const preferred = variants
-        .filter((t) => variantWidth(t) >= want * 0.6)
-        .sort((a, b) => variantWidth(a) - variantWidth(b))[0];
-      return candidateUrls(photo, variants, preferred, want, want);
+      const dynamic = (photo.thumbnails || [])
+        .filter((variant) => variant && variantKind(variant) === "dynamic");
+      const candidates = candidateUrls(photo, sortVariants(dynamic, want), want);
+
+      // Use the original directly for browser-decodable, non-video photos
+      // that fit the TV's texture and three-image memory limits. Large images,
+      // videos, and formats such as HEIC stay on the dynamic path.
+      if (canUseOriginal(photo, ORIGINAL_MAX_EDGE_PREVIEW)) {
+        candidates.unshift(originalUrl(photo));
+      }
+      return candidates;
     }
 
     return {

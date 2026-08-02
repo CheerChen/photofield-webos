@@ -1,4 +1,4 @@
-// Photofield candidate ordering and URL encoding.
+// Photofield candidate ordering, original admission, and URL encoding.
 import assert from "node:assert/strict";
 
 globalThis.window = {};
@@ -7,29 +7,110 @@ const client = globalThis.window.PhotofieldClient.create({ baseUrl: "http://phot
 const photo = {
   id: 7,
   filename: "folder/photo one.jpg",
+  width: 1364,
+  height: 2048,
+  isVideo: false,
   thumbnails: [
-    { name: "djpeg68", filename: "small.jpg", width: 400 },
-    { name: "ffmpeg", filename: "large.jpg", width: 1280 },
-    { name: "mid", filename: "medium.jpg", width: 800 },
-    { name: "mid", filename: "medium.jpg", width: 800 },
+    { name: "djpeg48", filename: "djpeg48.jpg", width: 682 },
+    { name: "djpeg78", filename: "djpeg78.jpg", width: 1193 },
+    { name: "djpeg88", filename: "djpeg88.jpg", width: 1364 },
+    { name: "ffmpeg-1280x1280-in", filename: "ffmpeg.jpg", width: 853 },
+    { name: "ffmpeg-4096x4096-in", filename: "ffmpeg-large.jpg", width: 2728 },
+    { name: "sqlite", filename: "sqlite.jpg", width: 171 },
+    { name: "thumb-640x640-B", filename: "sidecar.jpg", width: 640 },
+    { name: "original", filename: "raw.jpg", width: 1364 },
   ],
 };
 
-assert.deepEqual(client.previewCandidates(photo, 1920), [
-  "http://photos/api/files/7/variants/ffmpeg/large.jpg",
-  "http://photos/api/files/7/variants/mid/medium.jpg",
-  "http://photos/api/files/7/variants/djpeg68/small.jpg",
-  "http://photos/api/files/7/previews/folder%2Fphoto%20one.jpg?width=1920",
-]);
 assert.deepEqual(client.thumbCandidates(photo, 512), [
-  "http://photos/api/files/7/variants/mid/medium.jpg",
-  "http://photos/api/files/7/variants/djpeg68/small.jpg",
-  "http://photos/api/files/7/variants/ffmpeg/large.jpg",
-  "http://photos/api/files/7/previews/folder%2Fphoto%20one.jpg?width=512",
+  "http://photos/api/files/7/original/folder%2Fphoto%20one.jpg",
+  "http://photos/api/files/7/variants/sqlite/sqlite.jpg",
+  "http://photos/api/files/7/variants/thumb-640x640-B/sidecar.jpg",
+  "http://photos/api/files/7/variants/djpeg48/djpeg48.jpg",
+  "http://photos/api/files/7/variants/ffmpeg-1280x1280-in/ffmpeg.jpg",
+  "http://photos/api/files/7/variants/djpeg78/djpeg78.jpg",
+  "http://photos/api/files/7/variants/djpeg88/djpeg88.jpg",
+  "http://photos/api/files/7/variants/ffmpeg-4096x4096-in/ffmpeg-large.jpg",
+  "http://photos/api/files/7/previews/folder%2Fphoto%20one.jpg?w=512",
 ]);
+
+assert.deepEqual(client.previewCandidates(photo, 1920), [
+  "http://photos/api/files/7/original/folder%2Fphoto%20one.jpg",
+  "http://photos/api/files/7/variants/djpeg88/djpeg88.jpg",
+  "http://photos/api/files/7/variants/djpeg78/djpeg78.jpg",
+  "http://photos/api/files/7/variants/ffmpeg-4096x4096-in/ffmpeg-large.jpg",
+  "http://photos/api/files/7/variants/ffmpeg-1280x1280-in/ffmpeg.jpg",
+  "http://photos/api/files/7/variants/djpeg48/djpeg48.jpg",
+  "http://photos/api/files/7/previews/folder%2Fphoto%20one.jpg?w=1920",
+]);
+
+assert.equal(
+  client.originalUrl(photo),
+  "http://photos/api/files/7/original/folder%2Fphoto%20one.jpg"
+);
 assert.equal(client.previewUrl(photo, 1920), client.previewCandidates(photo, 1920)[0]);
+
+const large = { ...photo, width: 5000, height: 3000 };
+assert.equal(
+  client.thumbCandidates(large, 512)[0],
+  "http://photos/api/files/7/variants/djpeg48/djpeg48.jpg"
+);
+assert.equal(
+  client.previewCandidates(large, 1920)[0],
+  "http://photos/api/files/7/variants/djpeg88/djpeg88.jpg"
+);
+
+const heic = { ...photo, filename: "folder/photo one.HEIC" };
+assert.equal(
+  client.previewCandidates(heic, 1920)[0],
+  "http://photos/api/files/7/variants/djpeg88/djpeg88.jpg"
+);
+
+const video = { ...photo, filename: "folder/video.mp4", isVideo: true };
+assert.equal(
+  client.previewCandidates(video, 1920)[0],
+  "http://photos/api/files/7/variants/djpeg88/djpeg88.jpg"
+);
+assert.equal(
+  client.thumbCandidates(video, 512)[0],
+  "http://photos/api/files/7/variants/sqlite/sqlite.jpg"
+);
+
+const gif = { ...photo, filename: "folder/animated.gif" };
+assert.equal(
+  client.previewCandidates(gif, 1920)[0],
+  "http://photos/api/files/7/variants/djpeg88/djpeg88.jpg"
+);
+assert.equal(
+  client.thumbCandidates(gif, 512)[0],
+  "http://photos/api/files/7/variants/sqlite/sqlite.jpg"
+);
+
+const atThumbCap = { ...photo, width: 2048, height: 1024 };
+assert.equal(
+  client.thumbCandidates(atThumbCap, 512)[0],
+  "http://photos/api/files/7/original/folder%2Fphoto%20one.jpg"
+);
+
+const overThumbCap = { ...photo, width: 2049, height: 1024 };
+assert.equal(
+  client.thumbCandidates(overThumbCap, 512)[0],
+  "http://photos/api/files/7/variants/djpeg48/djpeg48.jpg"
+);
+
 assert.deepEqual(client.thumbCandidates({ id: 8, filename: "x.jpg" }, 512), [
-  "http://photos/api/files/8/previews/x.jpg?width=512",
+  "http://photos/api/files/8/previews/x.jpg?w=512",
+]);
+assert.deepEqual(client.previewCandidates({
+  id: 9,
+  filename: "x.jpg",
+  width: 1920,
+  height: 1080,
+  isVideo: false,
+  thumbnails: [],
+}, 1920), [
+  "http://photos/api/files/9/original/x.jpg",
+  "http://photos/api/files/9/previews/x.jpg?w=1920",
 ]);
 
 console.log("photofield.test.mjs OK");
