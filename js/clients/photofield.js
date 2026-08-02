@@ -272,6 +272,49 @@
         return base + "/api/files/" + photo.id + "/original/" +
           encodeURIComponent(photo.filename);
       },
+
+      /* Trigger a filesystem rescan for one collection. Photofield returns
+       * 202 when it creates the task and 409 when one is already running for
+       * that collection; both are acceptable "scan in progress" states, so
+       * 409 is swallowed. Uses a raw fetch instead of the shared api()
+       * helper because the task body is not needed and api() would try to
+       * parse it. INDEX_FILES is the only type that discovers new files;
+       * Photofield auto-queues INDEX_METADATA / CONTENTS / FACES after it. */
+      async createIndexFiles(collectionId) {
+        const r = await fetch(base + "/api/tasks", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            type: "INDEX_FILES",
+            collection_id: collectionId,
+          }),
+        });
+        if (r.status !== 202 && r.status !== 409) {
+          const err = new Error("photofield " + r.status);
+          err.status = r.status;
+          throw err;
+        }
+      },
+
+      /* Running tasks for the instance. With a collectionId the server
+       * filters server-side; without it every running task is returned,
+       * which the scan orchestrator attributes back to a source by matching
+       * each task's collection_id against the source's collection ids. */
+      async tasks(collectionId) {
+        const path = collectionId != null
+          ? "/tasks?collection_id=" + encodeURIComponent(collectionId)
+          : "/tasks";
+        const r = await api(path);
+        return r.items || [];
+      },
+
+      /* Drop scene and photo-metadata caches. Called after a scan finishes
+       * because file order may have changed and a stale scene would show the
+       * pre-scan layout (wrong photos / wrong positions). */
+      reset() {
+        scenes.clear();
+        photoCache.clear();
+      },
     };
   }
 

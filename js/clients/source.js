@@ -31,6 +31,12 @@
 
   let sources = [];
   const clientCache = new Map();
+  // In-memory scan state keyed by source id. Not persisted: a reboot clears
+  // it, which is correct because no scan is in flight across an app restart.
+  // Kept separate from `sources` so discover() rebuilds preserve it (the
+  // port-based id is stable across a re-probe) and the UI can grey a card
+  // even while counts are still loading.
+  const busy = new Map(); // sourceId -> { status: "scanning" | "error" }
 
   /* Derive a human-friendly name from the collection directory paths.
    * e.g. "/X/yukiAstra/" -> "X", "/wallpaper/sub/" -> "Wallpaper",
@@ -148,5 +154,8 @@
       }
       return clientCache.get(source.id);
     },
+    busy: (id) => busy.get(id) || null,
+    setBusy(id, info) { busy.set(id, info); },
+    clearBusy(id) { busy.delete(id); },
   };
 })();

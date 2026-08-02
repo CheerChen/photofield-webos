@@ -32,7 +32,7 @@
       { key: "duration", label: "播放间隔", value: window.Store.get("duration") + " 秒" },
       { key: "fitMode", label: "相片填充", value: current(FIT_MODES, "fitMode").label },
       { key: "playOrder", label: "播放顺序", value: current(PLAY_ORDERS, "playOrder").label },
-      { key: "autoLofi", label: "进入 Kiosk 自动播放 Lofi", value: current(LOFI_AUTOPLAY, "autoLofi").label },
+      { key: "autoLofi", label: "自动播放 Lofi", value: current(LOFI_AUTOPLAY, "autoLofi").label },
       { key: "host", label: "服务器地址", value: window.Store.get("photofield.host") || "192.168.0.110" },
       { key: "rescan", label: "重新扫描实例", value: "" },
       // PIN row hidden: no source is currently locked. Re-add when a locked

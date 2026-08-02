@@ -80,6 +80,11 @@ html, body {
   border-color: var(--focus);
   transform: scale(1.04);
 }
+/* A scanning source stays in the list but reads as inert: dimmed, with the
+ * accent border instead of the focus blue so a focused busy card is still
+ * distinguishable from a focused playable one. */
+.source-card.busy { opacity: 0.45; }
+.source-card.busy.focused { border-color: var(--accent); }
 .source-card-name { font-size: 40px; font-weight: 700; }
 .source-card-count { font-size: 24px; color: var(--dim); }
 .source-card-play {

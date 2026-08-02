@@ -6,6 +6,8 @@ All notable changes to this project are documented in this file.
 
 ### Added
 
+- Add red-key source rescan: triggers a Photofield filesystem reindex of the focused source, greys the card while scanning, and refreshes counts and clears the scene cache when done.
+- Detect busy sources passively: a source mid-scan (even one started from the Photofield web UI) is greyed out and entry/playback is blocked until its indexing tasks finish.
 - Add full IPv4 address entry in Settings.
 - Add red/yellow key paging for large photo grids.
 - Add refreshed app icons and splash artwork, with SVG source files for regeneration.
