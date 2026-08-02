@@ -2,14 +2,14 @@
 
 All notable changes to this project are documented in this file.
 
-## [Unreleased]
+## [0.4.0] - 2026-08-02
 
 ### Added
 
+- Play videos in the viewer and kiosk: videos stream the untouched source with sound, fall back to the already-loaded preview when the browser cannot decode them, and suspend Lofi music until playback moves on to the next photo.
 - Add red-key source rescan: triggers a Photofield filesystem reindex of the focused source, greys the card while scanning, and refreshes counts and clears the scene cache when done.
 - Detect busy sources passively: a source mid-scan (even one started from the Photofield web UI) is greyed out and entry/playback is blocked until its indexing tasks finish.
 - Add full IPv4 address entry in Settings.
-- Add red/yellow key paging for large photo grids.
 - Add refreshed app icons and splash artwork, with SVG source files for regeneration.
 - Show a short Lofi control hint when kiosk playback starts.
 - Add a default-on Kiosk Lofi autoplay setting with shuffled color cycles.
@@ -17,6 +17,8 @@ All notable changes to this project are documented in this file.
 
 ### Changed
 
+- Load images through an ordered fallback chain across grid, viewer, and kiosk: a missing pre-generated variant falls back to other variants or the server's dynamic preview instead of failing the slide.
+- Serve originals directly for browser-decodable photos within a per-surface decoded-size budget, skipping variant requests; animated GIFs are never admitted as originals.
 - Centralize kiosk launch and resume handling so every playback entry applies the same PIN gate and playback memory rules.
 - Preserve cached sources when a discovery scan finds no reachable instances, and show an actionable empty state when no source is available.
 - Cache recent photo metadata, defer scene creation, and preload kiosk images before crossfading.
