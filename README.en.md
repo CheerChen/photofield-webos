@@ -89,9 +89,11 @@ ssh root@TV 'opkg --add-dest developer:/media/developer install -d developer /tm
 ssh root@TV 'sync; reboot'   # a reboot is required on first install so sam registers the app
 ```
 
-Or package locally:
+Or package locally (initialize the [webos-tv-kit](https://github.com/CheerChen/webos-tv-kit)
+submodule first — the CDP debug tooling lives there too):
 
 ```bash
+git submodule update --init   # once after cloning
 ./scripts/package.sh
 # → com.cheerchen.photofield_<version>_all.ipk
 ```

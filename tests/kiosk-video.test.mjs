@@ -142,7 +142,7 @@ window.Store = {
 };
 window.Keys = { current: () => "grid", activate: () => {} };
 window.App = { show: () => {}, toast: () => {}, back: () => {} };
-window.Screensaver = { inhibit: () => {}, allow: () => {} };
+window.WebOSPlatform = { inhibitScreenSaver: () => {}, allowScreenSaver: () => {} };
 window.Music = {
   subscribe: () => () => {},
   suspend: () => { musicSuspends++; },

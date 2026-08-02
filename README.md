@@ -89,9 +89,11 @@ ssh root@TV 'opkg --add-dest developer:/media/developer install -d developer /tm
 ssh root@TV 'sync; reboot'   # 首次安装需重启，sam 才会注册应用
 ```
 
-也可本地打包：
+也可本地打包（需要先初始化 [webos-tv-kit](https://github.com/CheerChen/webos-tv-kit) 子模块，
+CDP 调试脚本也在其中）：
 
 ```bash
+git submodule update --init   # 首次 clone 后执行一次
 ./scripts/package.sh
 # → com.cheerchen.photofield_<version>_all.ipk
 ```

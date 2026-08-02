@@ -21,7 +21,7 @@
 
     exit() {
       // disableBackHistoryAPI is on: the app must close itself.
-      window.close();
+      window.WebOSPlatform.exitApp();
     },
 
     toast(msg, ms, kind) {

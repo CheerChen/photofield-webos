@@ -553,7 +553,7 @@
     clearMusicIndicator();
     hideHint();
     slideshowPaused = false;
-    window.Screensaver.allow();
+    window.WebOSPlatform.allowScreenSaver();
     window.App.show(returnTo === "grid" ? "grid" : returnTo);
   }
 
@@ -585,7 +585,7 @@
       player = null; // cleared during the async counts fetch so onKey no-ops
       window.Music.stop();
       clearMusicIndicator();
-      window.Screensaver.inhibit();
+      window.WebOSPlatform.inhibitScreenSaver();
       resetFrame($("kiosk-a"));
       resetFrame($("kiosk-b"));
       front = null;
@@ -609,7 +609,7 @@
         $("kiosk-loading").hidden = true;
         window.Music.stop();
         clearMusicIndicator();
-        window.Screensaver.allow();
+        window.WebOSPlatform.allowScreenSaver();
         window.App.toast("无法连接 " + source.name, 6000, "error");
         window.App.back();
         return;
@@ -643,7 +643,7 @@
             window.Music.stop();
             clearMusicIndicator();
             player = null;
-            window.Screensaver.allow();
+            window.WebOSPlatform.allowScreenSaver();
             window.App.toast("服务器连续错误，已停止播放", 6000, "error");
             window.App.back();
           } else {
@@ -664,7 +664,7 @@
         clearMusicIndicator();
         if (videoSession) endVideoSession(videoSession, false);
         player = null;
-        window.Screensaver.allow();
+        window.WebOSPlatform.allowScreenSaver();
         window.App.toast("播放失败：" + e.message, 6000, "error");
         window.App.back();
       });
