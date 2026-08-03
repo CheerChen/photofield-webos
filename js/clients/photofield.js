@@ -255,6 +255,16 @@
       return candidateUrls(photo, [...persistentFallback, ...dynamicFallback], want);
     }
 
+    function ambienceCandidates(photo, width) {
+      // Dedicated low-resolution feed for blurred ambience layers. The layer
+      // is blurred anyway, so persistent small variants come first and the
+      // original is never a candidate: TV GPUs pay per decoded pixel.
+      const want = width || 256;
+      const persistent = (photo.thumbnails || [])
+        .filter((variant) => variant && variantKind(variant) === "persistent");
+      return candidateUrls(photo, sortVariants(persistent, want), want);
+    }
+
     function previewCandidates(photo, width) {
       const want = width || 1920;
       const dynamic = (photo.thumbnails || [])
@@ -327,7 +337,7 @@
         const result = await withSceneRetry(collectionId, async (s) => {
           try {
             const r = await api("/scenes/" + s.id + "/regions/" + (i + 1));
-            return r.data ? mapPhoto(r.data) : null;
+            return r.data ? Object.assign(mapPhoto(r.data), { collectionId }) : null;
           } catch (e) {
             if (e.status === 404) return null; // id hole — caller skips
             throw e;
@@ -362,6 +372,7 @@
        * old single-URL helpers for callers outside this app, but make the
        * candidate-chain methods the source of truth for image loading. */
       thumbCandidates,
+      ambienceCandidates,
       previewCandidates,
       thumbUrl(photo, target) {
         return thumbCandidates(photo, target)[0];

@@ -15,6 +15,7 @@
  *   photoAt(collectionId, i) -> Promise<Photo|null>   (null = hole, skip it)
  *   slice(collectionId, y, h)-> Promise<[{i, x, y, w, h, photo}]>  grid rows
  *   thumbCandidates(photo, width)   -> ordered grid-thumbnail URLs
+ *   ambienceCandidates(photo, width)-> ordered low-res blur-layer URLs, never the original
  *   previewCandidates(photo, width) -> ordered fullscreen-image URLs
  *   thumbUrl/previewUrl              -> preferred URL compatibility helpers
  *   originalUrl(photo)               -> untouched file bytes

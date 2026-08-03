@@ -13,7 +13,8 @@
         <h1 class="topbar-title">Photofield</h1>
         <span class="topbar-sub">选择源</span>
       </header>
-      <div class="source-row" id="source-row"></div>
+      <div class="source-atmosphere" id="source-atmosphere"><canvas id="source-atmosphere-canvas" width="192" height="108"></canvas></div>
+      <div class="source-viewport"><div class="source-row" id="source-row"></div></div>
       <div class="source-empty" id="source-empty" hidden>未找到服务器<br /><span class="source-empty-hint">按蓝键检查地址并重扫</span></div>
       <footer class="hintbar">
         <span><b>OK</b> 浏览</span>
@@ -46,7 +47,6 @@
       <footer class="hintbar">
         <span><b>OK</b> 查看</span>
         <span><b><svg class="icon" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></b> 从此播放</span>
-        <span><b>红/黄</b> 翻页</span>
         <span><b>返回</b> 相册列表</span>
       </footer>
     </section>
