@@ -40,6 +40,22 @@ html, body {
 @keyframes ui-rise-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes equalize { 0%,100% { transform:scaleY(.35); } 50% { transform:scaleY(1); } }
 @keyframes scan-shimmer { from { transform:translateX(-130%); } to { transform:translateX(280%); } }
+@keyframes kiosk-ken-burns-tl-br {
+  from { transform:translate(-3%, -3%) scale(1.08); }
+  to { transform:translate(3%, 3%) scale(1.16); }
+}
+@keyframes kiosk-ken-burns-br-tl {
+  from { transform:translate(3%, 3%) scale(1.08); }
+  to { transform:translate(-3%, -3%) scale(1.16); }
+}
+@keyframes kiosk-ken-burns-tr-bl {
+  from { transform:translate(3%, -3%) scale(1.08); }
+  to { transform:translate(-3%, 3%) scale(1.16); }
+}
+@keyframes kiosk-ken-burns-bl-tr {
+  from { transform:translate(-3%, 3%) scale(1.08); }
+  to { transform:translate(3%, -3%) scale(1.16); }
+}
 
 /* ---------- topbar / hintbar ---------- */
 
@@ -293,6 +309,18 @@ html, body {
 }
 .kiosk-photo { background-size: contain; }
 .kiosk-frame.fit-cover .kiosk-photo { background-size: cover; }
+.kiosk-frame.fit-cover .kiosk-photo.kiosk-ken-burns {
+  will-change: transform;
+  animation-duration: 1s;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+  animation-play-state: running;
+}
+.kiosk-frame.fit-cover .kiosk-photo.kiosk-ken-burns.kiosk-ken-burns-tl-br { animation-name: kiosk-ken-burns-tl-br; }
+.kiosk-frame.fit-cover .kiosk-photo.kiosk-ken-burns.kiosk-ken-burns-br-tl { animation-name: kiosk-ken-burns-br-tl; }
+.kiosk-frame.fit-cover .kiosk-photo.kiosk-ken-burns.kiosk-ken-burns-tr-bl { animation-name: kiosk-ken-burns-tr-bl; }
+.kiosk-frame.fit-cover .kiosk-photo.kiosk-ken-burns.kiosk-ken-burns-bl-tr { animation-name: kiosk-ken-burns-bl-tr; }
+#screen-kiosk.kiosk-slideshow-paused .kiosk-frame.fit-cover .kiosk-photo.kiosk-ken-burns { animation-play-state: paused; }
 .kiosk-frame.fit-cover .kiosk-video-slot video { object-fit: cover; }
 .kiosk-frame.fit-ambient .kiosk-backdrop { display: block; }
 .kiosk-frame.fit-ambient .kiosk-photo { inset: 24px; }

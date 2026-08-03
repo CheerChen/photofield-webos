@@ -13,6 +13,13 @@
     blue: "#4c9aff",
   };
   const VIDEO_MAX_SECONDS = 60;
+  const KEN_BURNS_CLASS = "kiosk-ken-burns";
+  const KEN_BURNS_DIRECTION_CLASSES = [
+    "kiosk-ken-burns-tl-br",
+    "kiosk-ken-burns-br-tl",
+    "kiosk-ken-burns-tr-bl",
+    "kiosk-ken-burns-bl-tr",
+  ];
   let player = null;
   let client = null;
   let front = null; // frame currently visible
@@ -74,6 +81,17 @@
     if (temporary && mode !== "all") infoTimer = setTimeout(() => showInformation(false), 8000);
   }
 
+  function setSlideshowPaused(paused) {
+    slideshowPaused = !!paused;
+    const screen = $("screen-kiosk");
+    if (screen && screen.classList) {
+      screen.classList.toggle("kiosk-slideshow-paused", slideshowPaused);
+    }
+    const indicator = $("kiosk-paused");
+    if (indicator) indicator.hidden = !slideshowPaused;
+    return slideshowPaused;
+  }
+
   function setPhotoInfo(photo) {
     $("kiosk-date").textContent = fmtDate(photo.takenAt);
     const album = $("kiosk-album");
@@ -96,9 +114,37 @@
     if (video.parentNode) video.parentNode.removeChild(video);
   }
 
+  function clearKenBurns(photo) {
+    if (!photo) return;
+    photo.classList.remove(KEN_BURNS_CLASS, ...KEN_BURNS_DIRECTION_CLASSES);
+    photo.style.animation = "";
+    photo.style.animationName = "";
+    photo.style.animationDuration = "";
+    photo.style.transformOrigin = "";
+  }
+
+  function restartKenBurns(frame, fit) {
+    const photo = frame.querySelector(".kiosk-photo");
+    clearKenBurns(photo);
+    if (!photo || fit !== "cover") return;
+
+    const duration = Number(window.Store.get("duration"));
+    if (!Number.isFinite(duration) || duration <= 0) return;
+    const direction = KEN_BURNS_DIRECTION_CLASSES[
+      Math.floor(Math.random() * KEN_BURNS_DIRECTION_CLASSES.length)
+    ];
+    photo.classList.add(KEN_BURNS_CLASS, direction);
+    photo.style.animation = "none";
+    void photo.offsetWidth;
+    photo.style.animation = "";
+    photo.style.animationDuration = duration + "s";
+  }
+
   function resetFrame(frame) {
     frame.className = "kiosk-frame";
-    frame.querySelector(".kiosk-photo").style.backgroundImage = "";
+    const photo = frame.querySelector(".kiosk-photo");
+    clearKenBurns(photo);
+    photo.style.backgroundImage = "";
     frame.querySelector(".kiosk-backdrop").style.backgroundImage = "";
     const slot = frame.querySelector(".kiosk-video-slot");
     if (slot) {
@@ -247,7 +293,9 @@
     frame.className = "kiosk-frame";
     frame.classList.add("fit-" + fit);
     frame.classList.toggle("portrait", portrait);
-    frame.querySelector(".kiosk-photo").style.backgroundImage = "";
+    const photo = frame.querySelector(".kiosk-photo");
+    clearKenBurns(photo);
+    photo.style.backgroundImage = "";
     frame.querySelector(".kiosk-backdrop").style.backgroundImage = "";
   }
 
@@ -256,6 +304,7 @@
     frame.querySelector(".kiosk-photo").style.backgroundImage = cssUrl(url);
     frame.querySelector(".kiosk-backdrop").style.backgroundImage =
       fit === "ambient" ? cssUrl(url) : "";
+    restartKenBurns(frame, fit);
     frame.classList.add("visible");
     if (front && front !== frame) front.classList.remove("visible");
     front = frame;
@@ -451,6 +500,7 @@
       next.querySelector(".kiosk-photo").style.backgroundImage = cssUrl(loadedUrl);
       next.querySelector(".kiosk-backdrop").style.backgroundImage =
         fit === "ambient" ? cssUrl(loadedUrl) : "";
+      restartKenBurns(next, fit);
       next.classList.add("visible");
       if (front) front.classList.remove("visible");
       front = next;
@@ -560,8 +610,8 @@
   function toggleVideoPause() {
     const session = videoSession;
     if (!session) return false;
-    slideshowPaused = !slideshowPaused;
-    if (slideshowPaused) {
+    const paused = setSlideshowPaused(!slideshowPaused);
+    if (paused) {
       pauseVideoLimit(session);
       if (session.video) {
         try { session.video.pause(); } catch (e) { /* ignore */ }
@@ -570,8 +620,7 @@
     } else if (session.canPlay) {
       startVideoPlayback(session);
     }
-    $("kiosk-paused").hidden = !slideshowPaused;
-    return slideshowPaused;
+    return paused;
   }
 
   function navigate(delta) {
@@ -592,7 +641,7 @@
     hideHint();
     clearTimeout(infoTimer);
     clearInterval(clockTimer);
-    slideshowPaused = false;
+    setSlideshowPaused(false);
     window.WebOSPlatform.allowScreenSaver();
     window.App.show(returnTo === "grid" ? "grid" : returnTo);
   }
@@ -619,7 +668,7 @@
       client = window.Sources.client(source);
       const names = {};
       collectionNames = names;
-      slideshowPaused = false;
+      setSlideshowPaused(false);
 
       if (player) player.stop();
       player = null; // cleared during the async counts fetch so onKey no-ops
@@ -629,7 +678,6 @@
       resetFrame($("kiosk-a"));
       resetFrame($("kiosk-b"));
       front = null;
-      $("kiosk-paused").hidden = true;
       $("kiosk-loading").hidden = false;
       updateClock();
       clearInterval(clockTimer);
@@ -725,8 +773,7 @@
           toggleVideoPause();
         } else {
           const paused = player.togglePause();
-          slideshowPaused = paused;
-          $("kiosk-paused").hidden = !paused;
+          setSlideshowPaused(paused);
         }
       } else if (key === "right" || key === "fastforward") {
         navigate(1);
