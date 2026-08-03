@@ -158,5 +158,10 @@
     busy: (id) => busy.get(id) || null,
     setBusy(id, info) { busy.set(id, info); },
     clearBusy(id) { busy.delete(id); },
+    /* Display/playback order for a collections() result. The client contract
+     * returns name-ascending, so descending is just a reversed copy. */
+    sortCollections(cols) {
+      return window.Store.get("albumSort") === "nameDesc" ? cols.slice().reverse() : cols;
+    },
   };
 })();

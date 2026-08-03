@@ -17,6 +17,12 @@
     return error;
   }
 
+  function skippedError() {
+    const error = new Error("photo outside media scope");
+    error.code = "SKIPPED";
+    return error;
+  }
+
   function createPlayer(opts) {
     const {
       client,
@@ -28,12 +34,15 @@
       shuffle,
       start, // {collectionId, index} to start from, else 0
       duration,
+      photosOnly, // skip videos entirely (mediaScope "photos")
       onPhoto,
       onError,
       onNavigate,
     } = opts;
     let order = []; // [{c, i}]
     let pos = 0;
+    let dir = 1; // last navigation direction; holes/skips step the same way
+    let skipRun = 0; // consecutive holes/skips; a full lap means nothing playable
     let timer = null;
     let paused = false;
     let stopped = false;
@@ -94,6 +103,7 @@
         .then((photo) => {
           if (stopped || state.cancelled) throw cancelledError();
           if (!photo) throw holeError();
+          if (photosOnly && photo.isVideo) throw skippedError();
           state.photo = photo;
           const preferred = resolvedGet(key);
           const candidates = previewCandidates(photo, preferred);
@@ -196,6 +206,28 @@
       if (!order.length) throw new Error("empty collection");
     }
 
+    /* Step past a hole/skipped entry in the direction the user was heading —
+     * routing through next() would bounce a prev() back where it came from
+     * and make anything behind a video unreachable. */
+    function stepOver() {
+      skipRun++;
+      if (skipRun >= order.length) {
+        stopped = true;
+        showGeneration++;
+        clearTimeout(timer);
+        for (const state of cache.values()) cancelState(state);
+        cache.clear();
+        if (onError) {
+          const error = new Error("没有可播放的照片");
+          error.code = "STOPPED";
+          onError(error);
+        }
+        return;
+      }
+      pos = (pos + dir + order.length) % order.length;
+      show();
+    }
+
     async function show() {
       if (stopped) return;
       const token = ++showGeneration;
@@ -209,12 +241,13 @@
         // Reset only after the current photo itself has loaded successfully;
         // metadata success alone is not enough to clear the circuit breaker.
         consecutiveErrors = 0;
+        skipRun = 0;
         onPhoto(result.photo, result.url, current, order.length);
         schedule();
       } catch (error) {
         if (stopped || token !== showGeneration || current !== pos) return;
         if (error.code === "CANCELLED") return;
-        if (error.code === "HOLE") return next();
+        if (error.code === "HOLE" || error.code === "SKIPPED") return stepOver();
         if (recordError(error)) next();
       }
     }
@@ -228,6 +261,7 @@
       if (stopped) return;
       clearTimeout(timer);
       if (onNavigate) onNavigate();
+      dir = 1;
       pos = (pos + 1) % order.length;
       show();
     }
@@ -236,6 +270,7 @@
       if (stopped) return;
       clearTimeout(timer);
       if (onNavigate) onNavigate();
+      dir = -1;
       pos = (pos - 1 + order.length) % order.length;
       show();
     }

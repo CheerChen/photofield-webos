@@ -108,7 +108,7 @@
       $("collections-source-name").textContent = src.name;
       $("collection-list").innerHTML = "";
       try {
-        collections = await client.collections();
+        collections = window.Sources.sortCollections(await client.collections());
       } catch (e) {
         window.App.toast("无法连接 " + src.name);
         return window.App.show("sources");

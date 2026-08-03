@@ -440,20 +440,23 @@ html, body {
 .ipinput-seg.empty { color: var(--dim); }
 .ipinput-dot { color: var(--dim); }
 
-.settings-list { display: flex; flex-direction: column; gap: 20px; }
+.settings-list { display:flex; flex-direction:column; gap:8px; min-width:700px; }
+.settings-group { margin:12px 0 2px; color:var(--dim); font-size:18px; font-weight:600; letter-spacing:.18em; }
 .settings-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 80px;
-  padding: 20px 28px;
+  padding: 12px 24px;
   border-radius: 12px;
   background: var(--panel-2);
   border: 3px solid transparent;
   font-size: 26px;
 }
-.settings-row.focused { border-color: transparent; box-shadow: 0 0 0 3px var(--sunset-coral); }
-.settings-row .value { color: var(--sunset-amber); font-weight: 600; }
+.settings-row.focused { border-color:transparent; box-shadow:0 0 0 3px var(--sunset-coral); }
+.settings-row .value { color:var(--sunset-amber); font-weight:600; }
+.settings-action { justify-content:center; margin-top:4px; background:rgba(255,190,111,.1); color:var(--sunset-amber); }
+.settings-action .value { display:none; }
 
 /* ---------- toast ---------- */
 
