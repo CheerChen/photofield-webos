@@ -178,7 +178,10 @@ html, body {
   bottom: 72px;
   overflow: hidden;
 }
-.grid-canvas { position: relative; width: 1920px; }
+/* Scrolling is a composited translateY set by grid.js — will-change keeps
+ * the tall canvas on its own layer so focus scrolling never re-rasterizes
+ * loaded cells, and the transition makes each step glide. */
+.grid-canvas { position: relative; width: 1920px; will-change: transform; transition: transform .35s cubic-bezier(.2,.8,.2,1); }
 .grid-cell {
   position: absolute;
   background: var(--panel);

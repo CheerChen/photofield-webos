@@ -116,14 +116,18 @@
     if (item) {
       const cell = cells.get(item.i);
       if (cell) cell.classList.add("focused");
-      // Keep the focused cell inside the viewport.
+      // Keep the focused cell inside the viewport. Scrolling is a composited
+      // translateY on the canvas (see .grid-canvas) clamped to the real
+      // viewport height, so the view can never overshoot the content into
+      // bare background the way the old 1080-based scrollTop math could.
+      const viewH = $("grid-viewport").clientHeight;
       const target = Math.min(
-        Math.max(0, item.y - 1080 / 2 + item.h / 2),
-        Math.max(0, $("grid-canvas").offsetHeight - 1080)
+        Math.max(0, item.y - viewH / 2 + item.h / 2),
+        Math.max(0, $("grid-canvas").offsetHeight - viewH)
       );
       if (Math.abs(target - scrollY) > 40) {
         scrollY = target;
-        $("grid-viewport").scrollTop = scrollY;
+        $("grid-canvas").style.transform = "translateY(-" + scrollY + "px)";
       }
     }
     status();
@@ -172,7 +176,7 @@
       clearLoaded();
       $("grid-canvas").innerHTML = "";
       scrollY = 0;
-      $("grid-viewport").scrollTop = 0;
+      $("grid-canvas").style.transform = "translateY(0)";
       try {
         total = await client.photoCount(col.id);
         if (gen !== openGeneration) return;
@@ -189,11 +193,6 @@
       const first = slices.get(sliceKey(0));
       if (first && first.length) setFocused(first[0]);
       status();
-    },
-
-    onScroll(y) {
-      scrollY = y;
-      ensureSlices(openGeneration);
     },
 
     onKey({ key }) {
