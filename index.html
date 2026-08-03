@@ -47,6 +47,7 @@
       <footer class="hintbar">
         <span><b>OK</b> 查看</span>
         <span><b><svg class="icon" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></b> 从此播放</span>
+        <span><b>红/黄</b> 翻页</span>
         <span><b>返回</b> 相册列表</span>
       </footer>
     </section>
@@ -75,12 +76,13 @@
         <div class="kiosk-video-slot"></div>
       </div>
       <div class="kiosk-meta" id="kiosk-meta">
+        <div class="kiosk-album" id="kiosk-album"></div>
         <div class="kiosk-date" id="kiosk-date"></div>
-        <div class="kiosk-name" id="kiosk-name"></div>
       </div>
+      <div class="kiosk-clock" id="kiosk-clock"><div id="kiosk-clock-time"></div><div id="kiosk-clock-date"></div></div>
       <div class="kiosk-loading" id="kiosk-loading" hidden>加载中…</div>
       <div class="kiosk-hint" id="kiosk-hint" hidden>彩色键选 Lofi 列表 · 上下键切歌 · 播完随机换色 · 再按同色键关闭</div>
-      <div class="kiosk-music" id="kiosk-music" hidden><span id="kiosk-music-dot"></span><span id="kiosk-music-name"></span></div>
+      <div class="kiosk-music" id="kiosk-music" hidden><span class="kiosk-equalizer" id="kiosk-equalizer"><i></i><i></i><i></i></span><span id="kiosk-music-name"></span></div>
       <div class="kiosk-paused" id="kiosk-paused" hidden><svg class="icon" viewBox="0 0 24 24"><path d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg> 已暂停</div>
     </section>
 

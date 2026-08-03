@@ -6,7 +6,7 @@
 (function () {
   const $ = (id) => document.getElementById(id);
   const MUSIC_COLORS = ["red", "green", "yellow", "blue"];
-  const MUSIC_DOTS = {
+  const MUSIC_COLORS_HEX = {
     red: "#e5484d",
     green: "#46a758",
     yellow: "#f5d90a",
@@ -25,6 +25,9 @@
   let videoSession = null;
   let videoGeneration = 0;
   let slideshowPaused = false;
+  let infoTimer = null;
+  let clockTimer = null;
+  let musicTimer = null;
 
   // Show the lofi controls hint for a few seconds on entry, then fade it
   // out — the kiosk has no hintbar (immersive), so without this the bundled
@@ -49,9 +52,32 @@
     if (!iso) return "";
     const d = new Date(iso);
     if (isNaN(d)) return iso.slice(0, 10);
-    const p = (n) => String(n).padStart(2, "0");
-    return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate()) +
-      " " + p(d.getHours()) + ":" + p(d.getMinutes());
+    return d.getFullYear() + "年" + (d.getMonth() + 1) + "月" + d.getDate() + "日";
+  }
+
+  function updateClock() {
+    const now = new Date();
+    const time = $("kiosk-clock-time");
+    const date = $("kiosk-clock-date");
+    if (time) time.textContent = now.toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit", hour12: false });
+    if (date) date.textContent = now.toLocaleDateString("zh-CN", { weekday: "long", month: "long", day: "numeric" });
+  }
+
+  function showInformation(temporary) {
+    const mode = window.Store.get("infoDisplay") || "clock";
+    const screen = $("screen-kiosk");
+    if (!screen || !screen.classList) return;
+    screen.classList.toggle("kiosk-info-hidden", mode === "hidden" && !temporary);
+    screen.classList.toggle("kiosk-info-clock", mode === "clock" && !temporary);
+    screen.classList.toggle("kiosk-info-visible", mode === "all" || temporary);
+    clearTimeout(infoTimer);
+    if (temporary && mode !== "all") infoTimer = setTimeout(() => showInformation(false), 8000);
+  }
+
+  function setPhotoInfo(photo) {
+    $("kiosk-date").textContent = fmtDate(photo.takenAt);
+    const album = $("kiosk-album");
+    if (album) album.textContent = collectionNames[photo.collectionId] || "";
   }
 
   // Stop, detach, and force-load an empty source. Clearing only src is not
@@ -234,8 +260,7 @@
     if (front && front !== frame) front.classList.remove("visible");
     front = frame;
     $("kiosk-loading").hidden = true;
-    $("kiosk-date").textContent = fmtDate(photo.takenAt);
-    $("kiosk-name").textContent = photo.filename;
+    setPhotoInfo(photo);
   }
 
   function showVideoFrame(session) {
@@ -246,8 +271,7 @@
     if (front && front !== frame) front.classList.remove("visible");
     front = frame;
     $("kiosk-loading").hidden = true;
-    $("kiosk-date").textContent = fmtDate(session.photo.takenAt);
-    $("kiosk-name").textContent = session.photo.filename;
+    setPhotoInfo(session.photo);
   }
 
   function advanceVideo(session) {
@@ -431,8 +455,7 @@
       if (front) front.classList.remove("visible");
       front = next;
       $("kiosk-loading").hidden = true;
-      $("kiosk-date").textContent = fmtDate(photo.takenAt);
-      $("kiosk-name").textContent = photo.filename;
+      setPhotoInfo(photo);
       window.Music.resume();
       if (pendingFrameRequest === request) pendingFrameRequest = null;
     }).catch((error) => {
@@ -452,17 +475,32 @@
   }
 
   function clearMusicIndicator() {
-    $("kiosk-music").hidden = true;
+    clearTimeout(musicTimer);
+    const el = $("kiosk-music");
+    el.hidden = true;
+    el.classList.remove("fade");
+  }
+
+  function fadeMusicIndicator() {
+    $("kiosk-music").classList.add("fade");
+    musicTimer = setTimeout(clearMusicIndicator, 700);
   }
 
   function renderMusicIndicator(state) {
-    if (!state || !state.playing) {
+    if (!state) {
       clearMusicIndicator();
       return;
     }
-    $("kiosk-music-dot").style.background = MUSIC_DOTS[state.color];
+    const equalizer = $("kiosk-equalizer");
+    if (equalizer) {
+      equalizer.style.color = MUSIC_COLORS_HEX[state.color];
+      equalizer.classList.toggle("paused", !state.playing);
+    }
     $("kiosk-music-name").textContent = state.track.name + " · " + (state.index + 1) + "/" + state.total;
+    $("kiosk-music").classList.remove("fade");
     $("kiosk-music").hidden = false;
+    clearTimeout(musicTimer);
+    musicTimer = setTimeout(fadeMusicIndicator, state.playing ? 10000 : 4000);
   }
 
   function applyMusicState(state, announce) {
@@ -552,6 +590,8 @@
     window.Music.stop();
     clearMusicIndicator();
     hideHint();
+    clearTimeout(infoTimer);
+    clearInterval(clockTimer);
     slideshowPaused = false;
     window.WebOSPlatform.allowScreenSaver();
     window.App.show(returnTo === "grid" ? "grid" : returnTo);
@@ -591,6 +631,10 @@
       front = null;
       $("kiosk-paused").hidden = true;
       $("kiosk-loading").hidden = false;
+      updateClock();
+      clearInterval(clockTimer);
+      clockTimer = setInterval(updateClock, 60000);
+      showInformation(false);
       showHint();
 
       // Fetch counts (indexed_count) up front so the player can build its
@@ -624,6 +668,7 @@
         shuffle: window.Store.get("playOrder") !== "sequential",
         start: opts.start,
         duration: window.Store.get("duration"),
+        photosOnly: window.Store.get("mediaScope") !== "all",
         onPhoto(photo, url, pos, totalCount) {
           if (openId !== openGeneration || player !== nextPlayer) return;
           crossfade(photo, url, openId, nextPlayer);
@@ -644,7 +689,7 @@
             clearMusicIndicator();
             player = null;
             window.WebOSPlatform.allowScreenSaver();
-            window.App.toast("服务器连续错误，已停止播放", 6000, "error");
+            window.App.toast(e.message || "已停止播放", 6000, "error");
             window.App.back();
           } else {
             window.App.toast("服务器错误，正在重试…");
@@ -672,6 +717,7 @@
 
     onKey({ key }) {
       if (!player) return;
+      showInformation(true);
       if (MUSIC_COLORS.includes(key)) {
         toggleMusic(key);
       } else if (key === "ok" || key === "play" || key === "pause") {

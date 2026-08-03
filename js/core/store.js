@@ -9,6 +9,7 @@
     fitMode: "ambient", // "ambient" | "contain" | "cover"
     playOrder: "shuffle", // "shuffle" | "sequential"
     autoLofi: true, // start a random Lofi color when entering Kiosk
+    infoDisplay: "clock", // "all" | "clock" | "hidden"
     pinHash: null, // hash of 4-digit PIN, null = not set
     lastSource: null,
     lastCollection: null,

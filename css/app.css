@@ -297,12 +297,18 @@ html, body {
 .kiosk-meta {
   position: absolute;
   left: 72px;
-  bottom: 56px;
+  bottom: 54px;
   text-shadow: 0 1px 8px #000;
-  transition: opacity 0.4s ease;
+  z-index:3; transition:opacity .4s ease, transform .4s ease;
 }
 .kiosk-date { font-size: 34px; font-weight: 600; }
-.kiosk-name { font-size: 22px; color: #c8cdd8; margin-top: 6px; }
+.kiosk-album { font-size:22px; color:#c8cdd8; margin-bottom:6px; }
+.kiosk-clock { position:absolute; right:72px; bottom:54px; z-index:3; text-align:right; text-shadow:0 1px 8px #000; transition:opacity .4s ease, transform .4s ease; }
+#kiosk-clock-time { font-size:40px; font-weight:600; font-variant-numeric:tabular-nums; }
+#kiosk-clock-date { font-size:20px; color:#c8cdd8; margin-top:4px; }
+#screen-kiosk::after { content:""; position:absolute; z-index:2; left:0; right:0; bottom:0; height:160px; pointer-events:none; background:linear-gradient(transparent,var(--scrim)); }
+.kiosk-info-clock .kiosk-meta, .kiosk-info-clock .kiosk-music, .kiosk-info-clock .kiosk-hint { opacity:0; pointer-events:none; transform:translateY(4px); }
+.kiosk-info-hidden .kiosk-meta, .kiosk-info-hidden .kiosk-music, .kiosk-info-hidden .kiosk-hint, .kiosk-info-hidden .kiosk-clock { opacity:0; pointer-events:none; transform:translateY(4px); }
 .kiosk-paused {
   position: absolute;
   top: 40px;
@@ -315,7 +321,7 @@ html, body {
 .kiosk-music {
   position: absolute;
   top: 40px;
-  left: 72px;
+  left: 72px; z-index:3;
   display: flex;
   align-items: center;
   gap: 12px;
@@ -323,13 +329,15 @@ html, body {
   border-radius: 10px;
   background: rgba(0, 0, 0, 0.6);
   color: #e8eaef;
-  font-size: 22px;
+  /* No animation-fill: a filled keyframe value outranks normal declarations
+   * in the cascade and would block the .fade / info-mode opacity rules. */
+  font-size: 22px; animation:ui-rise-in .25s ease;
 }
-.kiosk-music > span:first-child {
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-}
+.kiosk-music.fade { opacity:0; transition:opacity .7s ease; }
+.kiosk-equalizer { display:flex; align-items:flex-end; gap:3px; width:18px; height:20px; }
+.kiosk-equalizer i { display:block; width:4px; height:100%; border-radius:2px; background:currentColor; transform-origin:bottom; animation:equalize .75s ease-in-out infinite; }
+.kiosk-equalizer i:nth-child(2) { animation-delay:.16s; }.kiosk-equalizer i:nth-child(3) { animation-delay:.31s; }
+.kiosk-equalizer.paused i { animation-play-state:paused; transform:scaleY(.28); opacity:.45; }
 .kiosk-loading {
   position: absolute;
   inset: 0;
@@ -350,7 +358,7 @@ html, body {
   background: rgba(0, 0, 0, 0.6);
   color: #c8cdd8;
   font-size: 22px;
-  opacity: 1;
+  z-index:3; opacity: 1;
   transition: opacity 1s ease;
   pointer-events: none;
 }
@@ -465,8 +473,8 @@ html, body {
  * longer lifetime so a routine toast (e.g. track name) cannot overwrite a
  * "playback stopped" message the user needs to read. */
 .toast-error {
-  bottom: auto;
-  top: 40px;
+  bottom: 160px;
+  top: auto;
   border-color: var(--accent);
   color: var(--accent);
   font-weight: 600;
