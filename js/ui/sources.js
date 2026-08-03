@@ -5,6 +5,21 @@
   let focusIdx = 0;
   let counts = {}; // sourceId -> total photo count
 
+  const SCAN_PHASES = {
+    INDEX_FILES: "扫描文件",
+    INDEX_METADATA: "读取照片信息",
+    INDEX_CONTENTS: "生成缩略图",
+    INDEX_FACES: "识别人脸",
+  };
+
+  function scanStatus(info) {
+    if (info.status === "error") return "扫描失败";
+    const phase = SCAN_PHASES[info.taskType] || "扫描中";
+    return Number.isFinite(info.done)
+      ? phase + " " + info.done.toLocaleString() + " 张…"
+      : phase + "…";
+  }
+
   function render() {
     const row = $("source-row");
     row.innerHTML = "";
@@ -34,8 +49,7 @@
       if (busyInfo) {
         // Scanning greys the card and replaces the count with a status line;
         // the count is stale until the scan finishes and counts are reloaded.
-        countEl.textContent =
-          busyInfo.status === "error" ? "扫描失败" : "扫描中…";
+        countEl.textContent = scanStatus(busyInfo);
       } else {
         const count = counts[s.id];
         countEl.textContent =

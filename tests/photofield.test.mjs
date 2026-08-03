@@ -117,4 +117,65 @@ assert.deepEqual(client.previewCandidates({
   "http://photos/api/files/9/previews/x.jpg?w=1920",
 ]);
 
+// A freshly indexed Photofield instance can report indexed_count: 0 while
+// its scene already contains the real files. collections() falls back to the
+// settled scene count, including a genuinely empty collection.
+const realFetch = globalThis.fetch;
+const sceneCounts = new Map([
+  ["fresh", 12],
+  ["empty", 0],
+]);
+let sceneReads = 0;
+let collectionReads = 0;
+globalThis.fetch = async (url, opts = {}) => {
+  const parsed = new URL(url);
+  const path = parsed.pathname;
+  const json = (data, status = 200) => new Response(JSON.stringify(data), {
+    status,
+    headers: { "Content-Type": "application/json" },
+  });
+  if (path === "/api/collections") {
+    collectionReads++;
+    return json({ items: [
+      { id: "fresh", name: "Fresh", indexed_count: 0 },
+      { id: "existing", name: "Existing", indexed_count: 7 },
+      { id: "empty", name: "Empty", indexed_count: 0 },
+    ] });
+  }
+  if (path === "/api/scenes" && opts.method === "POST") {
+    const id = JSON.parse(opts.body).collection_id;
+    return json({ id: "scene-" + id }, 202);
+  }
+  if (path === "/api/scenes" && opts.method !== "POST") {
+    return json({ items: [] });
+  }
+  if (path.startsWith("/api/scenes/scene-")) {
+    sceneReads++;
+    const id = path.slice("/api/scenes/scene-".length);
+    return json({
+      id: "scene-" + id,
+      loading: false,
+      stale: false,
+      file_count: sceneCounts.get(id),
+      bounds: { h: 100 },
+    });
+  }
+  throw new Error("unexpected fetch " + url);
+};
+
+const countClient = window.PhotofieldClient.create({ baseUrl: "http://counts" });
+const [resolvedCounts, sharedCounts] = await Promise.all([
+  countClient.collections(),
+  countClient.collections(),
+]);
+assert.deepEqual(resolvedCounts, [
+  { id: "empty", name: "Empty", count: 0 },
+  { id: "existing", name: "Existing", count: 7 },
+  { id: "fresh", name: "Fresh", count: 12 },
+]);
+assert.deepEqual(sharedCounts, resolvedCounts);
+assert.equal(collectionReads, 1, "concurrent count refreshes share one request");
+assert.equal(sceneReads, 2, "only zero counts use the scene fallback");
+globalThis.fetch = realFetch;
+
 console.log("photofield.test.mjs OK");

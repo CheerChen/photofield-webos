@@ -26,6 +26,10 @@
   function create(source) {
     const base = source.baseUrl;
     const scenes = new Map(); // collectionId -> {id, fileCount, height}
+    // App boot and source-screen routing can request counts more than once in
+    // quick succession. Share the expensive zero-count scene fallback while
+    // it is in flight so those refreshes do not create duplicate scenes.
+    let collectionsInFlight = null;
     // photoAt metadata cache: player.js preload() and show() both call
     // photoAt for the same (collection, index), so without a cache every
     // slide costs two region requests on the pi. Keyed by "collectionId:i",
@@ -81,10 +85,12 @@
           layout: GRID_LAYOUT,
         }),
       });
-      // Scene layout is async (202): poll until the layout settles.
+      // Scene layout is async (202): poll until the layout settles. A settled
+      // empty scene is also a valid result. Requiring file_count > 0 made a
+      // genuinely empty collection spin for the full 96-second timeout.
       for (let i = 0; i < SCENE_POLL_MAX; i++) {
         const s = await api("/scenes/" + scene.id);
-        if (!s.loading && s.file_count > 0) return s;
+        if (!s.loading) return s;
         await new Promise((r) => setTimeout(r, SCENE_POLL_MS));
       }
       throw new Error("scene never finished loading");
@@ -266,10 +272,38 @@
 
     return {
       async collections() {
-        const r = await api("/collections");
-        return (r.items || [])
-          .map((c) => ({ id: c.id, name: c.name, count: c.indexed_count }))
-          .sort((a, b) => a.name.localeCompare(b.name));
+        if (!collectionsInFlight) {
+          collectionsInFlight = (async () => {
+            const r = await api("/collections");
+            const collections = (r.items || [])
+              .map((c) => ({ id: c.id, name: c.name, count: c.indexed_count }))
+              .sort((a, b) => a.name.localeCompare(b.name));
+
+            // Recent Photofield builds can leave indexed_count at 0 after a
+            // successful first index even though scenes contain all files.
+            // Resolve only zero/invalid values through the scene API;
+            // positive indexed_count values keep the inexpensive fast path.
+            // Do this sequentially to avoid making a newly indexed Raspberry
+            // Pi lay out every collection at once.
+            for (const collection of collections) {
+              const count = Number(collection.count);
+              if (Number.isFinite(count) && count > 0) {
+                collection.count = count;
+                continue;
+              }
+              collection.count = await this.photoCount(collection.id);
+            }
+            return collections;
+          })();
+        }
+        const request = collectionsInFlight;
+        try {
+          return await request;
+        } finally {
+          // A reset/new request may have installed a different promise while
+          // this call was awaiting; never clear that newer request.
+          if (collectionsInFlight === request) collectionsInFlight = null;
+        }
       },
 
       async photoCount(collectionId) {
@@ -369,6 +403,15 @@
           err.status = r.status;
           throw err;
         }
+        // A 202 response includes the current task list. Returning it lets
+        // the scan UI show progress immediately instead of waiting for the
+        // first poll (fast INDEX_FILES tasks may be gone by then).
+        try {
+          const data = await r.json();
+          return data.items || [];
+        } catch (e) {
+          return [];
+        }
       },
 
       /* Running tasks for the instance. With a collectionId the server
@@ -389,6 +432,7 @@
       reset() {
         scenes.clear();
         photoCache.clear();
+        collectionsInFlight = null;
       },
     };
   }

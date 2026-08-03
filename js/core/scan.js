@@ -25,7 +25,7 @@
  * running" trade-off from the investigation.
  */
 (function () {
-  const TASK_POLL_MS = 2000;
+  const TASK_POLL_MS = 1000;
   const TASK_TYPES = [
     "INDEX_FILES",
     "INDEX_METADATA",
@@ -40,13 +40,33 @@
   // "an active start() owns this source's busy clear".
   const active = new Map();
 
-  function attributed(tasks, colIds) {
-    return tasks.some(
+  function attributedTasks(tasks, colIds) {
+    return tasks.filter(
       (t) =>
         t.collection_id != null &&
         colIds.includes(t.collection_id) &&
         TASK_TYPES.includes(t.type)
     );
+  }
+
+  function attributed(tasks, colIds) {
+    return attributedTasks(tasks, colIds).length > 0;
+  }
+
+  function updateProgress(source, tasks, colIds) {
+    const relevant = attributedTasks(tasks, colIds);
+    if (!relevant.length) return false;
+    // The API normally returns the active task first. Prefer a task whose
+    // done counter has moved when queued zero-progress tasks precede it.
+    const task = relevant.find((t) => Number(t.done) > 0) || relevant[0];
+    const done = Number(task.done);
+    window.Sources.setBusy(source.id, {
+      status: "scanning",
+      taskType: task.type,
+      done: Number.isFinite(done) && done >= 0 ? done : null,
+    });
+    if (window.Keys.current() === "sources") window.SourcesScreen.render();
+    return true;
   }
 
   window.Scan = {
@@ -93,7 +113,8 @@
         // on another client) does not abort the rest.
         for (const cid of colIds) {
           try {
-            await client.createIndexFiles(cid);
+            const tasks = await client.createIndexFiles(cid);
+            updateProgress(source, tasks || [], colIds);
           } catch (e) {
             /* keep going — the poll loop still picks up running tasks */
           }
@@ -106,7 +127,9 @@
         while (active.get(source.id) === gen) {
           let busy = false;
           try {
-            busy = attributed(await client.tasks(), colIds);
+            const tasks = await client.tasks();
+            busy = attributed(tasks, colIds);
+            if (busy) updateProgress(source, tasks, colIds);
             netErrors = 0;
           } catch (e) {
             if (++netErrors >= MAX_NET_ERRORS) throw e;

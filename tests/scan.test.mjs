@@ -8,12 +8,13 @@ const realSetTimeout = globalThis.setTimeout;
 globalThis.setTimeout = (fn) => realSetTimeout(fn, 0);
 
 const busyMap = new Map();
+const busyUpdates = [];
 const toasts = [];
 let renders = 0;
 let refreshes = 0;
 let resetCalls = 0;
 
-function makeClient({ collections, tasks, indexThrows }) {
+function makeClient({ collections, tasks, indexThrows, indexResponse }) {
   const calls = { createIndexFiles: 0, tasks: 0 };
   return {
     calls,
@@ -23,6 +24,7 @@ function makeClient({ collections, tasks, indexThrows }) {
     async createIndexFiles() {
       calls.createIndexFiles++;
       if (indexThrows) throw indexThrows;
+      return indexResponse || [];
     },
     async tasks() {
       calls.tasks++;
@@ -46,7 +48,10 @@ window.SourcesScreen = {
 window.Sources = {
   client: () => null, // set per-test
   busy: (id) => busyMap.get(id) || null,
-  setBusy: (id, info) => busyMap.set(id, info),
+  setBusy: (id, info) => {
+    busyUpdates.push(info);
+    busyMap.set(id, info);
+  },
   clearBusy: (id) => busyMap.delete(id),
 };
 
@@ -57,6 +62,7 @@ const source = { id: "port-8001", name: "X" };
 function setup(client) {
   window.Sources.client = () => client;
   busyMap.clear();
+  busyUpdates.length = 0;
   toasts.length = 0;
   renders = 0;
   refreshes = 0;
@@ -108,6 +114,30 @@ function setup(client) {
   setup(client);
   await Scan.sync(source, [{ id: "c1" }]);
   assert.equal(window.Sources.busy(source.id), null);
+}
+
+// --- active start: task done counter is exposed as UI progress --------
+{
+  let taskState = [{
+    id: "index-files-c1",
+    collection_id: "c1",
+    type: "INDEX_FILES",
+    done: 23,
+  }];
+  const client = makeClient({
+    collections: [{ id: "c1" }],
+    tasks: () => taskState,
+    indexResponse: taskState,
+  });
+  setup(client);
+  const p = Scan.start(source);
+  await new Promise((r) => realSetTimeout(r, 5));
+  taskState = [];
+  await p;
+  assert.ok(busyUpdates.some(
+    (info) => info.taskType === "INDEX_FILES" && info.done === 23
+  ));
+  assert.ok(renders > 0, "progress updates re-render the source card");
 }
 
 // --- active start: triggers INDEX_FILES, polls, resets, clears -------
