@@ -15,7 +15,6 @@
   let focusIdx = 0; // pad grid cursor
   let onConfirm = null;
   let onCancel = null;
-  let returnTo = "settings";
 
   function renderPad() {
     const padEl = $("ipinput-pad");
@@ -107,12 +106,14 @@
     const host = filled.join(".");
     const cb = onConfirm;
     close();
+    window.Navigation.pop();
     if (cb) cb(host);
   }
 
   function cancel() {
     const cb = onCancel;
     close();
+    window.Navigation.pop();
     if (cb) cb();
   }
 
@@ -122,7 +123,6 @@
       opts = opts || {};
       onConfirm = opts.onConfirm;
       onCancel = opts.onCancel;
-      returnTo = window.Keys.current() || "settings";
       const parts = String(initial || "").split(".");
       octets = [0, 1, 2, 3].map((i) => {
         const p = parts[i];
@@ -131,8 +131,7 @@
       });
       segIdx = 0;
       focusIdx = 0;
-      $("ipinput-overlay").hidden = false;
-      window.Keys.activate("ipinput");
+      window.Navigation.push("ipinput");
       render();
     },
 
@@ -149,7 +148,5 @@
         cancel();
       }
     },
-
-    returnTo: () => returnTo,
   };
 })();

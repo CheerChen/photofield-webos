@@ -115,6 +115,8 @@ function autoSetup() {
 }
 
 globalThis.window = {};
+await import("../js/core/media.js");
+await import("../js/core/generation.js");
 await import("../js/core/image-loader.js");
 
 let captured;
@@ -141,7 +143,8 @@ window.Store = {
   },
 };
 window.Keys = { current: () => "grid", activate: () => {} };
-window.App = { show: () => {}, toast: () => {}, back: () => {} };
+window.Navigation = { push: () => {}, pop: () => {} };
+window.App = { toast: () => {}, back: () => {} };
 window.WebOSPlatform = { inhibitScreenSaver: () => {}, allowScreenSaver: () => {} };
 window.Music = {
   subscribe: () => () => {},

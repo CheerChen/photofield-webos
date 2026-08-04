@@ -70,6 +70,8 @@ globalThis.document = {
   createElement: (tag) => new Element(tag),
 };
 globalThis.window = {};
+await import("../js/core/media.js");
+await import("../js/core/generation.js");
 await import("../js/core/image-loader.js");
 
 const photos = [
@@ -98,6 +100,7 @@ const client = {
 };
 window.Sources = { client: () => client };
 window.Keys = { activate: () => {} };
+window.Navigation = { push: () => {}, pop: () => {} };
 window.App = { toast: () => {} };
 window.Playback = { start: () => {} };
 await import("../js/ui/viewer.js");

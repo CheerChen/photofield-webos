@@ -33,7 +33,6 @@
     { id: "all", label: "图片和视频" },
   ];
   let focusIdx = 0;
-  let returnTo = "sources";
 
   function current(options, key) {
     return options.find((option) => option.id === window.Store.get(key)) || options[0];
@@ -123,10 +122,8 @@
 
   window.SettingsScreen = {
     open() {
-      returnTo = window.Keys.current() || "sources";
       focusIdx = 0;
-      $("settings-overlay").hidden = false;
-      window.Keys.activate("settings");
+      window.Navigation.push("settings");
       render();
     },
 
@@ -148,27 +145,18 @@
         }
         if (row.key === "host") {
           const cur = window.Store.get("photofield.host") || "192.168.0.110";
-          $("settings-overlay").hidden = true;
           window.IpInput.open(cur, {
             onConfirm: (host) => {
               window.Store.set("photofield.host", host);
-              // Re-show settings overlay and refresh the row value.
-              $("settings-overlay").hidden = false;
-              window.Keys.activate("settings");
               render();
               window.App.toast("地址已更新，重新扫描生效");
-            },
-            onCancel: () => {
-              $("settings-overlay").hidden = false;
-              window.Keys.activate("settings");
             },
           });
           return;
         }
         return;
       } else if (key === "back") {
-        $("settings-overlay").hidden = true;
-        window.Keys.activate(returnTo);
+        window.Navigation.pop();
         return;
       } else return;
       render();

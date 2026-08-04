@@ -22,6 +22,9 @@ class MockImage {
 globalThis.Image = MockImage;
 globalThis.window = {};
 
+await import("../js/core/lru.js");
+await import("../js/core/media.js");
+await import("../js/core/generation.js");
 await import("../js/core/image-loader.js");
 await import("../js/core/player.js");
 const Player = globalThis.window.Player;

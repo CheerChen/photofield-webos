@@ -4,7 +4,7 @@
   const $ = (id) => document.getElementById(id);
   let focusIdx = 0;
   let counts = {};
-  let coverGeneration = 0;
+  const coverGeneration = window.Generation.create();
   let covers = {};
   let atmospheres = {};
   let atmosphereTimer = 0;
@@ -66,7 +66,7 @@
     mosaic.className = "source-card-mosaic";
     for (let i = 0; i < 3; i++) {
       const tile = document.createElement("span");
-      if (urls[i]) tile.style.backgroundImage = 'url("' + urls[i].replace(/"/g, "%22") + '")';
+      if (urls[i]) tile.style.backgroundImage = window.Media.cssUrl(urls[i]);
       mosaic.appendChild(tile);
     }
     return mosaic;
@@ -142,9 +142,9 @@
     updateCards();
   }
 
-  async function loadSourceCovers(generation) {
+  async function loadSourceCovers(token) {
     for (const source of window.Sources.all()) {
-      if (generation !== coverGeneration) return;
+      if (!token.isCurrent()) return;
       try {
         const client = window.Sources.client(source);
         const cols = await client.collections();
@@ -156,19 +156,31 @@
           if (!photo) continue;
           if (!ambiencePhoto) ambiencePhoto = photo;
           const candidates = client.thumbCandidates ? client.thumbCandidates(photo, 640) : [client.thumbUrl(photo, 640)];
-          const result = await window.ImageLoader.load(candidates).promise;
-          urls.push(result.url);
+          const request = window.ImageLoader.load(candidates);
+          const untrack = token.onCancel(() => request.cancel());
+          try {
+            const result = await request.promise;
+            urls.push(result.url);
+          } finally {
+            untrack();
+          }
         }
         if (ambiencePhoto && client.ambienceCandidates) {
           try {
             // Keep the decoded Image itself: the ambience is drawn onto a
             // canvas, not set as a background URL. Cross-origin pixels are
             // fine because the canvas is display-only, never read back.
-            const ambience = await window.ImageLoader.load(client.ambienceCandidates(ambiencePhoto, 256)).promise;
-            atmospheres[source.id] = ambience.image;
+            const request = window.ImageLoader.load(client.ambienceCandidates(ambiencePhoto, 256));
+            const untrack = token.onCancel(() => request.cancel());
+            try {
+              const ambience = await request.promise;
+              if (token.isCurrent()) atmospheres[source.id] = ambience.image;
+            } finally {
+              untrack();
+            }
           } catch (e) { /* ambience stays dark; the mosaic is unaffected */ }
         }
-        if (generation !== coverGeneration) return;
+        if (!token.isCurrent()) return;
         covers[source.id] = urls;
         buildCards();
         updateCards();
@@ -192,11 +204,11 @@
 
   window.SourcesScreen = {
     open() {
-      window.App.show("sources");
+      window.Navigation.reset("sources");
       focusIdx = 0;
       render();
-      const generation = ++coverGeneration;
-      loadSourceCovers(generation);
+      const token = coverGeneration.next();
+      loadSourceCovers(token);
     },
     render,
     refresh: loadCounts,

@@ -23,14 +23,13 @@
   let player = null;
   let client = null;
   let front = null; // frame currently visible
-  let returnTo = "sources";
   let collectionNames = {};
   let hintTimer = null;
-  let openGeneration = 0;
-  let frameGeneration = 0;
+  const openGeneration = window.Generation.create();
+  const frameGeneration = window.Generation.create();
   let pendingFrameRequest = null;
   let videoSession = null;
-  let videoGeneration = 0;
+  const videoGeneration = window.Generation.create();
   let slideshowPaused = false;
   let infoTimer = null;
   let clockTimer = null;
@@ -98,22 +97,6 @@
     if (album) album.textContent = collectionNames[photo.collectionId] || "";
   }
 
-  // Stop, detach, and force-load an empty source. Clearing only src is not
-  // enough on webOS: the decoder can otherwise remain pinned between slides.
-  function releaseVideoElement(video) {
-    if (!video) return;
-    video.oncanplay = null;
-    video.onloadeddata = null;
-    video.onerror = null;
-    video.onended = null;
-    try { video.pause(); } catch (e) { /* ignore */ }
-    try {
-      video.src = "";
-      video.load();
-    } catch (e) { /* ignore */ }
-    if (video.parentNode) video.parentNode.removeChild(video);
-  }
-
   function clearKenBurns(photo) {
     if (!photo) return;
     photo.classList.remove(KEN_BURNS_CLASS, ...KEN_BURNS_DIRECTION_CLASSES);
@@ -149,44 +132,36 @@
     const slot = frame.querySelector(".kiosk-video-slot");
     if (slot) {
       const video = slot.querySelector("video");
-      if (video) releaseVideoElement(video);
+      if (video) window.Media.releaseVideo(video);
       slot.innerHTML = "";
     }
   }
 
   function cancelPendingFrame() {
-    frameGeneration++;
+    frameGeneration.cancel();
     if (pendingFrameRequest) pendingFrameRequest.cancel();
     pendingFrameRequest = null;
   }
 
   function previewCandidates(photo, preferred) {
-    const listed = client.previewCandidates
-      ? client.previewCandidates(photo, 1920)
-      : [client.previewUrl(photo, 1920)];
-    const candidates = Array.isArray(listed) ? listed.filter(Boolean) : [listed];
-    return preferred
-      ? [preferred, ...candidates.filter((url) => url !== preferred)]
-      : candidates;
+    return window.Media.previewCandidates(client, photo, preferred);
   }
 
   function cssUrl(url) {
-    return 'url("' + String(url).replace(/"/g, "%22") + '")';
+    return window.Media.cssUrl(url);
   }
 
   function videoUrl(photo) {
-    if (client.videoUrl) return client.videoUrl(photo);
-    if (client.originalUrl) return client.originalUrl(photo);
-    return null;
+    return window.Media.videoUrl(client, photo);
   }
 
   function sessionIsCurrent(session) {
     return (
       videoSession === session &&
-      videoGeneration === session.token &&
-      openGeneration === session.openId &&
-      player === session.owner &&
-      frameGeneration === session.frameId
+      session.videoToken.isCurrent() &&
+      session.openToken.isCurrent() &&
+      session.frameToken.isCurrent() &&
+      player === session.owner
     );
   }
 
@@ -236,7 +211,7 @@
   function endVideoSession(session, resumePlayer) {
     if (!session || videoSession !== session) return;
     videoSession = null;
-    videoGeneration++;
+    session.videoToken.cancel();
     clearTimeout(session.limitTimer);
     session.limitTimer = null;
     if (session.posterRequest && pendingFrameRequest === session.posterRequest) {
@@ -244,19 +219,19 @@
       pendingFrameRequest = null;
     }
     if (session.video) {
-      releaseVideoElement(session.video);
+      window.Media.releaseVideo(session.video);
       session.video = null;
     }
     if (resumePlayer) resumePlayerAfterVideo(session);
   }
 
-  function beginVideoSession(owner, openId, frameId) {
+  function beginVideoSession(owner, openToken, frameToken) {
     if (videoSession) endVideoSession(videoSession, true);
     const session = {
-      token: ++videoGeneration,
+      videoToken: videoGeneration.next(),
       owner,
-      openId,
-      frameId,
+      openToken,
+      frameToken,
       photo: null,
       frame: null,
       fit: null,
@@ -326,7 +301,7 @@
   function advanceVideo(session) {
     if (!sessionIsCurrent(session)) return;
     endVideoSession(session, true);
-    if (player === session.owner && openGeneration === session.openId) {
+    if (player === session.owner && session.openToken.isCurrent()) {
       session.owner.next();
     }
   }
@@ -392,7 +367,7 @@
     // Defensive cleanup: a stale callback must never leave two decoder
     // elements in the staging slot before the new session is mounted.
     const existing = slot.querySelector("video");
-    if (existing) releaseVideoElement(existing);
+    if (existing) window.Media.releaseVideo(existing);
 
     prepareFrame(frame, session.fit, session.portrait);
     frame.querySelector(".kiosk-photo").style.backgroundImage = cssUrl(posterUrl);
@@ -437,13 +412,13 @@
     try { video.load(); } catch (e) { /* error event handles failure */ }
   }
 
-  function crossfadeVideo(photo, url, openId, owner, frameId) {
+  function crossfadeVideo(photo, url, openToken, owner, frameToken) {
     const a = $("kiosk-a");
     const b = $("kiosk-b");
     const next = front === a ? b : a;
     const fit = window.Store.get("fitMode") || "ambient";
     const portrait = photo.height > photo.width;
-    const session = beginVideoSession(owner, openId, frameId);
+    const session = beginVideoSession(owner, openToken, frameToken);
     session.photo = photo;
     session.frame = next;
     session.fit = fit;
@@ -469,17 +444,17 @@
     });
   }
 
-  function crossfade(photo, url, openId, owner) {
+  function crossfade(photo, url, openToken, owner) {
     const a = $("kiosk-a");
     const b = $("kiosk-b");
     const next = front === a ? b : a;
     const fit = window.Store.get("fitMode") || "ambient";
     const portrait = photo.height > photo.width;
-    const frameId = ++frameGeneration;
+    const frameToken = frameGeneration.next();
     if (pendingFrameRequest) pendingFrameRequest.cancel();
 
     if (photo.isVideo) {
-      return crossfadeVideo(photo, url, openId, owner, frameId);
+      return crossfadeVideo(photo, url, openToken, owner, frameToken);
     }
     if (videoSession) endVideoSession(videoSession, true);
 
@@ -490,9 +465,9 @@
     pendingFrameRequest = request;
     request.promise.then((result) => {
       if (
-        openGeneration !== openId ||
+        !openToken.isCurrent() ||
         player !== owner ||
-        frameGeneration !== frameId
+        !frameToken.isCurrent()
       ) return;
 
       const loadedUrl = result.url;
@@ -512,9 +487,9 @@
       if (pendingFrameRequest === request) pendingFrameRequest = null;
       if (
         (error && error.code === "CANCELLED") ||
-        openGeneration !== openId ||
+        !openToken.isCurrent() ||
         player !== owner ||
-        frameGeneration !== frameId
+        !frameToken.isCurrent()
       ) return;
 
       // Do not expose the staging frame and do not touch the current frame.
@@ -592,16 +567,16 @@
     applyMusicState(state, true);
   }
 
-  function startAutoMusic(nextPlayer, openId) {
+  function startAutoMusic(nextPlayer, openToken) {
     if (window.Store.get("autoLofi") === false) return;
     window.Music.autoStart().then((state) => {
-      if (openGeneration !== openId || player !== nextPlayer || !state || state.stale) return;
+      if (!openToken.isCurrent() || player !== nextPlayer || !state || state.stale) return;
       if (state.error) {
         clearMusicIndicator();
         window.App.toast("音乐播放失败");
       }
     }).catch(() => {
-      if (openGeneration !== openId || player !== nextPlayer) return;
+      if (!openToken.isCurrent() || player !== nextPlayer) return;
       clearMusicIndicator();
       window.App.toast("音乐播放失败");
     });
@@ -631,7 +606,7 @@
   }
 
   function leave() {
-    openGeneration++;
+    openGeneration.cancel();
     cancelPendingFrame();
     if (videoSession) endVideoSession(videoSession, false);
     if (player) player.stop();
@@ -643,7 +618,7 @@
     clearInterval(clockTimer);
     setSlideshowPaused(false);
     window.WebOSPlatform.allowScreenSaver();
-    window.App.show(returnTo === "grid" ? "grid" : returnTo);
+    window.Navigation.pop();
   }
 
   window.KioskScreen = {
@@ -659,12 +634,10 @@
      */
     async open(source, collectionIds, opts) {
       opts = opts || {};
-      const openId = ++openGeneration;
+      const openToken = openGeneration.next();
       cancelPendingFrame();
       if (videoSession) endVideoSession(videoSession, false);
-      returnTo = window.Keys.current() || "sources";
-      if (returnTo === "kiosk") returnTo = "sources";
-      window.App.show("kiosk");
+      window.Navigation.push("kiosk");
       client = window.Sources.client(source);
       const names = {};
       collectionNames = names;
@@ -697,7 +670,7 @@
           countsMap[c.id] = c.count;
         }
       } catch (e) {
-        if (openId !== openGeneration) return;
+        if (!openToken.isCurrent()) return;
         $("kiosk-loading").hidden = true;
         window.Music.stop();
         clearMusicIndicator();
@@ -706,7 +679,7 @@
         window.App.back();
         return;
       }
-      if (openId !== openGeneration) return;
+      if (!openToken.isCurrent()) return;
 
       const counts = collectionIds.map((id) => countsMap[id] || 0);
       const nextPlayer = window.Player.create({
@@ -717,18 +690,18 @@
         start: opts.start,
         duration: window.Store.get("duration"),
         photosOnly: window.Store.get("mediaScope") !== "all",
-        onPhoto(photo, url, pos, totalCount) {
-          if (openId !== openGeneration || player !== nextPlayer) return;
-          crossfade(photo, url, openId, nextPlayer);
+        onPhoto(photo, url) {
+          if (!openToken.isCurrent() || player !== nextPlayer) return;
+          crossfade(photo, url, openToken, nextPlayer);
         },
         onNavigate() {
-          if (openId === openGeneration && player === nextPlayer) {
+          if (openToken.isCurrent() && player === nextPlayer) {
             if (videoSession) endVideoSession(videoSession, true);
             cancelPendingFrame();
           }
         },
         onError(e) {
-          if (openId !== openGeneration || player !== nextPlayer) return;
+          if (!openToken.isCurrent() || player !== nextPlayer) return;
           if (e && e.code === "STOPPED") {
             cancelPendingFrame();
             if (videoSession) endVideoSession(videoSession, false);
@@ -744,14 +717,14 @@
           }
         },
       });
-      if (openId !== openGeneration) {
+      if (!openToken.isCurrent()) {
         nextPlayer.stop();
         return;
       }
       player = nextPlayer;
-      startAutoMusic(nextPlayer, openId);
+      startAutoMusic(nextPlayer, openToken);
       nextPlayer.start.catch((e) => {
-        if (openId !== openGeneration || player !== nextPlayer) return;
+        if (!openToken.isCurrent() || player !== nextPlayer) return;
         $("kiosk-loading").hidden = true;
         window.Music.stop();
         clearMusicIndicator();

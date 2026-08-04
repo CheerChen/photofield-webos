@@ -61,7 +61,7 @@
   let suspended = false;
   let suspendOffset = 0;
   let resumeRetryTimer = null;
-  let generation = 0;
+  const generation = window.Generation.create();
   // Delay before retrying a resume whose play() was rejected, typically
   // because webOS is still tearing down the media pipeline of a just-released
   // video element.
@@ -220,7 +220,7 @@
     const order = playlists[color];
     const position = playlistPos[color];
     const current = currentTrack(color, position);
-    const op = ++generation;
+    const token = generation.next();
     const el = replaceAudio();
 
     el.src = current.track.src;
@@ -231,7 +231,7 @@
     try {
       const started = el.play();
       if (started && typeof started.then === "function") await started;
-      if (op !== generation || activeColor !== color) {
+      if (!token.isCurrent() || activeColor !== color) {
         return {
           color,
           track: current.track,
@@ -248,7 +248,7 @@
       notify(state);
       return state;
     } catch (error) {
-      if (op !== generation || activeColor !== color) {
+      if (!token.isCurrent() || activeColor !== color) {
         return {
           color,
           track: current.track,
@@ -291,7 +291,7 @@
     if (activeColor === color) {
       const state = snapshot();
       const el = ensureAudio();
-      generation++;
+      generation.cancel();
       activeColor = null;
       playing = false;
       suspended = false;
@@ -332,8 +332,10 @@
     if (!activeColor || !audio || suspended) return snapshot();
     suspended = true;
     suspendOffset = audio.currentTime || 0;
+    // Invalidate both established and still-pending play() attempts. A video
+    // can claim the webOS media pipeline before the music promise settles.
+    generation.cancel();
     if (playing) {
-      generation++;
       playing = false;
       pauseForMusic(audio);
       notify(snapshot());
@@ -361,14 +363,14 @@
     const el = replaceAudio();
     el.src = current.track.src;
     el.currentTime = 0;
-    const op = ++generation;
+    const token = generation.next();
     playing = false;
 
     try {
       const started = el.play();
       if (started && typeof started.then === "function") await started;
       if (
-        op !== generation ||
+        !token.isCurrent() ||
         activeColor !== color ||
         audio !== el ||
         !suspended
@@ -397,7 +399,7 @@
       return state;
     } catch (error) {
       if (
-        op !== generation ||
+        !token.isCurrent() ||
         activeColor !== color ||
         audio !== el ||
         !suspended
@@ -420,7 +422,7 @@
       playing = false;
       resumeRetryTimer = setTimeout(() => {
         resumeRetryTimer = null;
-        if (generation === op && suspended && activeColor === color) {
+        if (token.isCurrent() && suspended && activeColor === color) {
           resume().catch(() => {});
         }
       }, RESUME_RETRY_MS);
@@ -439,7 +441,7 @@
 
   function stop() {
     clearResumeRetry();
-    generation++;
+    generation.cancel();
     activeColor = null;
     playing = false;
     suspended = false;

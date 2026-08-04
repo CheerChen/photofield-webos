@@ -15,7 +15,7 @@
   const pending = new Map();
   const cells = new Map(); // i -> element
   let focused = null; // current focused item {i,x,y,w,h,photo}
-  let openGeneration = 0;
+  const openGeneration = window.Generation.create();
 
   function sliceKey(y) {
     return Math.floor(y / SLICE_H) * SLICE_H;
@@ -85,26 +85,26 @@
     focused = null;
   }
 
-  async function ensureSlices(gen = openGeneration) {
-    if (gen !== openGeneration) return;
+  async function ensureSlices(token = openGeneration.current()) {
+    if (!token || !token.isCurrent()) return;
     const first = sliceKey(scrollY - SLICE_H);
     const last = sliceKey(scrollY + SLICE_H * 2);
     for (let key = first; key <= last; key += SLICE_H) {
-      if (gen !== openGeneration) return;
+      if (!token.isCurrent()) return;
       if (key < 0 || slices.has(key) || pending.has(key)) continue;
-      pending.set(key, gen);
+      pending.set(key, token);
       try {
         const items = await client.slice(collection.id, key, SLICE_H);
-        if (gen !== openGeneration) return;
+        if (!token.isCurrent()) return;
         slices.set(key, items);
         renderSlice(key);
       } catch (e) {
         /* slice stays unfetched; next scroll retries */
       } finally {
-        if (pending.get(key) === gen) pending.delete(key);
+        if (pending.get(key) === token) pending.delete(key);
       }
     }
-    if (gen === openGeneration) prune();
+    if (token.isCurrent()) prune();
   }
 
   function setFocused(item) {
@@ -162,34 +162,35 @@
     }
     if (best) {
       setFocused(best);
-      ensureSlices(openGeneration);
+      ensureSlices();
     }
   }
 
   window.GridScreen = {
     async open(src, col) {
-      const gen = ++openGeneration;
+      const token = openGeneration.next();
       source = src;
       collection = col;
       client = window.Sources.client(src);
-      window.App.show("grid");
+      window.Navigation.push("grid");
       clearLoaded();
       $("grid-canvas").innerHTML = "";
       scrollY = 0;
       $("grid-canvas").style.transform = "translateY(0)";
       try {
-        total = await client.photoCount(col.id);
-        if (gen !== openGeneration) return;
+        const loadedTotal = await client.photoCount(col.id);
+        if (!token.isCurrent()) return;
+        total = loadedTotal;
         const height = await client.sceneHeight(col.id);
-        if (gen !== openGeneration) return;
+        if (!token.isCurrent()) return;
         $("grid-canvas").style.height = height + "px";
       } catch (e) {
-        if (gen !== openGeneration) return;
+        if (!token.isCurrent()) return;
         window.App.toast("加载失败：" + e.message);
-        return window.App.show(window.GridScreen.backTarget || "sources");
+        return window.Navigation.pop();
       }
-      await ensureSlices(gen);
-      if (gen !== openGeneration) return;
+      await ensureSlices(token);
+      if (!token.isCurrent()) return;
       const first = slices.get(sliceKey(0));
       if (first && first.length) setFocused(first[0]);
       status();
@@ -208,12 +209,10 @@
           rememberCollection: collection.id,
         });
       } else if (key === "back") {
-        openGeneration++;
+        openGeneration.cancel();
         clearLoaded();
-        return window.App.show(window.GridScreen.backTarget || "sources");
+        return window.Navigation.pop();
       }
     },
-
-    backTarget: "collections",
   };
 })();
