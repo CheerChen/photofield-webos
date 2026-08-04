@@ -36,23 +36,8 @@
     // slide costs two region requests on the pi. Keyed by "collectionId:i",
     // value is the photo object or null (a hole). Bounded LRU so a long
     // slideshow does not grow unbounded.
-    const photoCache = new Map();
     const PHOTO_CACHE_MAX = 64;
-
-    function photoCacheGet(key) {
-      if (!photoCache.has(key)) return undefined;
-      const v = photoCache.get(key);
-      photoCache.delete(key);
-      photoCache.set(key, v); // move to most-recent
-      return v;
-    }
-    function photoCacheSet(key, v) {
-      if (photoCache.has(key)) photoCache.delete(key);
-      photoCache.set(key, v);
-      if (photoCache.size > PHOTO_CACHE_MAX) {
-        photoCache.delete(photoCache.keys().next().value);
-      }
-    }
+    const photoCache = window.LRU.create(PHOTO_CACHE_MAX);
 
     async function api(path, opts) {
       const r = await fetch(base + "/api" + path, opts);
@@ -323,7 +308,7 @@
       },
 
       async sceneHeight(collectionId) {
-        const s = await withSceneRetry(collectionId, (x) => x);
+        await withSceneRetry(collectionId, (x) => x);
         return scenes.get(collectionId).height;
       },
 
@@ -333,7 +318,7 @@
        * deterministic, so a cached photo stays valid for the session. */
       async photoAt(collectionId, i) {
         const key = collectionId + ":" + i;
-        const cached = photoCacheGet(key);
+        const cached = photoCache.get(key);
         if (cached !== undefined) return cached;
         const result = await withSceneRetry(collectionId, async (s) => {
           try {
@@ -344,7 +329,7 @@
             throw e;
           }
         });
-        photoCacheSet(key, result);
+        photoCache.set(key, result);
         return result;
       },
 

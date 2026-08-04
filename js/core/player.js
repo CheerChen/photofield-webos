@@ -47,38 +47,17 @@
     let paused = false;
     let stopped = false;
     let consecutiveErrors = 0;
-    let showGeneration = 0;
+    const showGeneration = window.Generation.create();
     const cache = new Map(); // pos -> in-flight/decoded image state
-    const resolvedUrls = new Map(); // "collection:index" -> last good URL
+    // "collection:index" -> last good URL, most-recent-first.
+    const resolvedUrls = window.LRU.create(RESOLVED_URL_CACHE_MAX);
 
     function entryKey(entry) {
       return entry.c + ":" + entry.i;
     }
 
-    function resolvedGet(key) {
-      if (!resolvedUrls.has(key)) return undefined;
-      const value = resolvedUrls.get(key);
-      resolvedUrls.delete(key);
-      resolvedUrls.set(key, value);
-      return value;
-    }
-
-    function resolvedSet(key, value) {
-      if (resolvedUrls.has(key)) resolvedUrls.delete(key);
-      resolvedUrls.set(key, value);
-      if (resolvedUrls.size > RESOLVED_URL_CACHE_MAX) {
-        resolvedUrls.delete(resolvedUrls.keys().next().value);
-      }
-    }
-
     function previewCandidates(photo, preferred) {
-      const listed = client.previewCandidates
-        ? client.previewCandidates(photo, 1920)
-        : [client.previewUrl(photo, 1920)];
-      const candidates = Array.isArray(listed) ? listed.filter(Boolean) : [listed];
-      return preferred
-        ? [preferred, ...candidates.filter((url) => url !== preferred)]
-        : candidates;
+      return window.Media.previewCandidates(client, photo, preferred);
     }
 
     function ensurePreview(p) {
@@ -105,7 +84,7 @@
           if (!photo) throw holeError();
           if (photosOnly && photo.isVideo) throw skippedError();
           state.photo = photo;
-          const preferred = resolvedGet(key);
+          const preferred = resolvedUrls.get(key);
           const candidates = previewCandidates(photo, preferred);
           if (!window.ImageLoader) throw new Error("ImageLoader unavailable");
           state.request = window.ImageLoader.load(candidates);
@@ -115,7 +94,7 @@
           if (stopped || state.cancelled) throw cancelledError();
           state.image = result.image;
           state.url = result.url;
-          resolvedSet(key, result.url);
+          resolvedUrls.set(key, result.url);
           return { photo: state.photo, url: state.url, image: state.image };
         })
         .catch((error) => {
@@ -158,7 +137,7 @@
 
     function stopForErrors() {
       stopped = true;
-      showGeneration++;
+      showGeneration.cancel();
       clearTimeout(timer);
       for (const state of cache.values()) cancelState(state);
       cache.clear();
@@ -213,7 +192,7 @@
       skipRun++;
       if (skipRun >= order.length) {
         stopped = true;
-        showGeneration++;
+        showGeneration.cancel();
         clearTimeout(timer);
         for (const state of cache.values()) cancelState(state);
         cache.clear();
@@ -230,14 +209,14 @@
 
     async function show() {
       if (stopped) return;
-      const token = ++showGeneration;
+      const token = showGeneration.next();
       prune();
       preload(pos + 1);
       preload(pos - 1);
       const current = pos;
       try {
         const result = await ensurePreview(current);
-        if (stopped || token !== showGeneration || current !== pos) return;
+        if (stopped || !token.isCurrent() || current !== pos) return;
         // Reset only after the current photo itself has loaded successfully;
         // metadata success alone is not enough to clear the circuit breaker.
         consecutiveErrors = 0;
@@ -245,7 +224,7 @@
         onPhoto(result.photo, result.url, current, order.length);
         schedule();
       } catch (error) {
-        if (stopped || token !== showGeneration || current !== pos) return;
+        if (stopped || !token.isCurrent() || current !== pos) return;
         if (error.code === "CANCELLED") return;
         if (error.code === "HOLE" || error.code === "SKIPPED") return stepOver();
         if (recordError(error)) next();
@@ -295,7 +274,7 @@
       },
       stop() {
         stopped = true;
-        showGeneration++;
+        showGeneration.cancel();
         clearTimeout(timer);
         for (const state of cache.values()) cancelState(state);
         cache.clear();

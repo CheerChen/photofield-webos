@@ -1,22 +1,11 @@
-/* Entry point: screen manager and boot. Navigation is explicit — each
- * screen knows its parent (see backTarget on grid / returnTo on kiosk). */
+/* Entry point: shared app services and boot. Screen visibility, overlay
+ * layering, key activation, and back behavior are owned by Navigation. */
 (function () {
   const $ = (id) => document.getElementById(id);
-  const SCREENS = ["sources", "collections", "grid", "viewer", "kiosk"];
 
   window.App = {
-    show(name) {
-      for (const s of SCREENS) $("screen-" + s).hidden = s !== name;
-      window.Keys.activate(name);
-      // Source totals can change while browsing or playing. Refresh whenever
-      // navigation returns to this screen instead of only once at app boot.
-      if (name === "sources" && window.SourcesScreen) {
-        window.SourcesScreen.refresh();
-      }
-    },
-
     back() {
-      window.App.show("sources");
+      window.Navigation.pop();
     },
 
     exit() {

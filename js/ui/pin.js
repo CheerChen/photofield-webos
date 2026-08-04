@@ -44,6 +44,7 @@
   function close() {
     $("pin-overlay").hidden = true;
     state = null;
+    window.Navigation.pop();
   }
 
   function submit(digit) {
@@ -98,23 +99,19 @@
         state = { mode: "verify", sourceId: source.id, onPass };
         $("pin-title").textContent = "输入 PIN 进入「" + source.name + "」";
       }
-      state.returnTo = window.Keys.current();
       entered = "";
       focusIdx = 0;
-      $("pin-overlay").hidden = false;
-      window.Keys.activate("pin");
+      window.Navigation.push("pin");
       render();
     },
 
     /* Standalone create/change flow from settings. */
     setup(onDone) {
       state = { mode: "create", sourceId: null, first: null, onPass: onDone };
-      state.returnTo = window.Keys.current();
       entered = "";
       focusIdx = 0;
       $("pin-title").textContent = window.Store.hasPin() ? "修改 PIN：输入新 PIN" : "设置 4 位 PIN";
-      $("pin-overlay").hidden = false;
-      window.Keys.activate("pin");
+      window.Navigation.push("pin");
       render();
     },
 
@@ -130,13 +127,8 @@
       } else if (key === "ok") {
         if (pad[focusIdx] !== null) submit(String(pad[focusIdx]));
       } else if (key === "back") {
-        const returnTo = state.returnTo || "sources";
         const cb = state.onCancel;
         close();
-        if (returnTo === "settings") {
-          $("settings-overlay").hidden = false;
-        }
-        window.Keys.activate(returnTo);
         cb && cb();
       }
     },

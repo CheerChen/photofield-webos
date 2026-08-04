@@ -49,6 +49,7 @@ class MockAudio {
 const originalRandom = Math.random;
 Math.random = () => 0;
 globalThis.window = { Audio: MockAudio };
+await import("../js/core/generation.js");
 await import("../js/core/music.js");
 const Music = globalThis.window.Music;
 const colors = Music.colors();
@@ -145,6 +146,15 @@ assert.equal(closed.playing, false);
 assert.equal(Music.active(), null);
 MockAudio.pending.shift()();
 assert.equal((await opening).stale, true);
+
+// Suspension must also invalidate a play() that has not settled yet. This is
+// the kiosk-video race: late music playback must not reclaim the media pipe.
+const pendingAtSuspend = Music.toggle("yellow");
+Music.suspend();
+MockAudio.pending.shift()();
+assert.equal((await pendingAtSuspend).stale, true);
+assert.equal(Music.active().playing, false);
+Music.stop();
 MockAudio.defer = false;
 
 // Suspending a playing color pauses the element but keeps its shuffled cycle

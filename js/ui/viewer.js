@@ -10,8 +10,7 @@
   let count = 0;
   let moveDir = 0; // direction of the last move(); 0 = opened directly
   let loading = false;
-  let viewerGeneration = 0;
-  let loadGeneration = 0;
+  const viewerGeneration = window.Generation.create();
   let pendingRequest = null;
   let activeVideo = null;
 
@@ -20,43 +19,21 @@
     return iso.slice(0, 10);
   }
 
-  // webOS has one hardware media pipeline. Always clear the source and force
-  // a load before removing a video so a later screen cannot inherit it.
-  function releaseVideo(video) {
-    if (!video) return;
-    video.oncanplay = null;
-    video.onloadeddata = null;
-    video.onerror = null;
-    video.onended = null;
-    video.autoplay = false;
-    try { video.pause(); } catch (e) { /* ignore */ }
-    try {
-      video.src = "";
-      video.load();
-    } catch (e) { /* ignore */ }
-    if (video.parentNode) video.parentNode.removeChild(video);
-  }
-
   function cancelLoad() {
-    loadGeneration++;
+    viewerGeneration.cancel();
     if (pendingRequest) pendingRequest.cancel();
     pendingRequest = null;
-    if (activeVideo) releaseVideo(activeVideo);
+    if (activeVideo) window.Media.releaseVideo(activeVideo);
     activeVideo = null;
     loading = false;
   }
 
   function invalidate() {
-    viewerGeneration++;
     cancelLoad();
   }
 
-  function current(gen, token, at) {
-    return (
-      gen === viewerGeneration &&
-      token === loadGeneration &&
-      index === at
-    );
+  function current(token, at) {
+    return token.isCurrent() && index === at;
   }
 
   function meta(photo, at) {
@@ -66,24 +43,19 @@
   }
 
   function previewCandidates(photo) {
-    const candidates = client.previewCandidates
-      ? client.previewCandidates(photo, 1920)
-      : [client.previewUrl(photo, 1920)];
-    return Array.isArray(candidates) ? candidates.filter(Boolean) : [candidates];
+    return window.Media.previewCandidates(client, photo);
   }
 
   function videoUrl(photo) {
-    if (client.videoUrl) return client.videoUrl(photo);
-    if (client.originalUrl) return client.originalUrl(photo);
-    return null;
+    return window.Media.videoUrl(client, photo);
   }
 
-  async function showImage(photo, gen, token, at) {
+  async function showImage(photo, token, at) {
     const img = document.createElement("img");
     const request = window.ImageLoader.load(previewCandidates(photo), img);
     pendingRequest = request;
     const result = await request.promise;
-    if (!current(gen, token, at)) return;
+    if (!current(token, at)) return;
     pendingRequest = null;
 
     // Keep the current image visible until the complete candidate chain has
@@ -94,14 +66,14 @@
     meta(photo, at);
   }
 
-  async function showVideo(photo, gen, token, at) {
+  async function showVideo(photo, token, at) {
     // Load the poster through the same candidate chain as still images. This
     // makes sqlite/dynamic/previews fallback work even though the video URL is
     // always the original source file.
     const request = window.ImageLoader.load(previewCandidates(photo));
     pendingRequest = request;
     const poster = await request.promise;
-    if (!current(gen, token, at)) return;
+    if (!current(token, at)) return;
     pendingRequest = null;
 
     poster.image.onload = null;
@@ -129,13 +101,13 @@
 
     let failed = false;
     let playAttempted = false;
-    const valid = () => current(gen, token, at) && activeVideo === video;
+    const valid = () => current(token, at) && activeVideo === video;
 
     function fallback() {
       if (failed || !valid()) return;
       failed = true;
       activeVideo = null;
-      releaseVideo(video);
+      window.Media.releaseVideo(video);
       stage.innerHTML = "";
       stage.appendChild(poster.image);
       window.App.toast("视频无法播放，显示海报");
@@ -169,14 +141,13 @@
     try { video.load(); } catch (e) { /* error event handles the failure */ }
   }
 
-  async function show(gen) {
-    if (gen !== viewerGeneration || loading) return;
+  async function show(token) {
+    if (!token.isCurrent() || loading) return;
     loading = true;
-    const token = ++loadGeneration;
     const at = index;
     try {
       const photo = await client.photoAt(collection.id, at);
-      if (!current(gen, token, at)) return;
+      if (!current(token, at)) return;
       if (!photo) return;
       // Media scope: while navigating, step over videos in the same
       // direction (the finally block chains show() when index moved).
@@ -187,15 +158,15 @@
         if (next >= 0 && next < count) index = next;
         return;
       }
-      if (photo.isVideo) await showVideo(photo, gen, token, at);
-      else await showImage(photo, gen, token, at);
+      if (photo.isVideo) await showVideo(photo, token, at);
+      else await showImage(photo, token, at);
     } catch (e) {
-      if (current(gen, token, at)) window.App.toast("加载失败");
+      if (current(token, at)) window.App.toast("加载失败");
     } finally {
-      if (pendingRequest && token === loadGeneration) pendingRequest = null;
-      if (gen !== viewerGeneration || token !== loadGeneration) return;
+      if (token.isCurrent()) pendingRequest = null;
+      if (!token.isCurrent()) return;
       loading = false;
-      if (index !== at) show(gen);
+      if (index !== at) show(viewerGeneration.next());
     }
   }
 
@@ -207,29 +178,33 @@
     // Navigation must release a playing video immediately rather than waiting
     // for the poster/image request to finish.
     cancelLoad();
-    show(viewerGeneration);
+    show(viewerGeneration.next());
   }
 
   window.ViewerScreen = {
     async open(src, col, startIndex) {
       invalidate();
-      const gen = viewerGeneration;
+      const token = viewerGeneration.next();
       source = src;
       collection = col;
       client = window.Sources.client(src);
       index = startIndex;
       moveDir = 0;
+      $("viewer-stage").innerHTML = "";
+      window.Navigation.push("viewer");
       try {
-        count = await client.photoCount(col.id);
+        const loadedCount = await client.photoCount(col.id);
+        if (!token.isCurrent()) return;
+        count = loadedCount;
       } catch (e) {
-        if (gen !== viewerGeneration) return;
+        if (!token.isCurrent()) return;
         window.App.toast("加载失败");
+        invalidate();
+        window.Navigation.pop();
         return;
       }
-      if (gen !== viewerGeneration) return;
-      $("screen-viewer").hidden = false;
-      window.Keys.activate("viewer");
-      show(gen);
+      if (!token.isCurrent()) return;
+      show(token);
     },
 
     onKey({ key }) {
@@ -238,16 +213,15 @@
       } else if (key === "right") {
         move(1);
       } else if (key === "play" || key === "green") {
-        $("screen-viewer").hidden = true;
         invalidate();
+        window.Navigation.pop();
         window.Playback.start(source, [collection.id], {
           start: { collectionId: collection.id, index },
           rememberCollection: collection.id,
         });
       } else if (key === "back" || key === "ok") {
-        $("screen-viewer").hidden = true;
         invalidate();
-        window.Keys.activate("grid");
+        window.Navigation.pop();
       }
     },
   };

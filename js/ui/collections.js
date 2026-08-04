@@ -11,13 +11,14 @@
   let client = null;
   let collections = [];
   let focusIdx = 0;
-  let coverGen = 0; // invalidate in-flight cover loads when leaving
+  // Invalidates in-flight cover loads when leaving.
+  const coverGen = window.Generation.create();
 
   function render() {
     const grid = $("collection-list");
     grid.innerHTML = "";
     grid.className = "collection-grid";
-    collections.forEach((c, i) => {
+    collections.forEach((c) => {
       const card = document.createElement("div");
       card.className = "collection-card";
       const cover = document.createElement("div");
@@ -52,15 +53,15 @@
   }
 
   /* Sequential, pi-friendly cover loader. */
-  async function loadCovers(gen) {
+  async function loadCovers(token) {
     let errors = 0;
     for (const c of collections) {
-      if (gen !== coverGen) return;
+      if (!token.isCurrent()) return;
       const slot = document.querySelector('[data-cover="' + c.id + '"]');
       if (!slot || slot.dataset.done) continue;
       try {
         const photo = await client.photoAt(c.id, 0);
-        if (gen !== coverGen) return;
+        if (!token.isCurrent()) return;
         if (photo) {
           const candidates = client.thumbCandidates
             ? client.thumbCandidates(photo, 640)
@@ -68,17 +69,19 @@
           const img = document.createElement("img");
           const request = window.ImageLoader.load(candidates, img);
           slot._imageRequest = request;
-          await request.promise;
-          if (gen !== coverGen) {
-            request.cancel();
-            return;
+          const untrack = token.onCancel(() => request.cancel());
+          try {
+            await request.promise;
+          } finally {
+            untrack();
           }
+          if (!token.isCurrent()) return;
           slot.innerHTML = "";
           slot.appendChild(img);
           slot.dataset.done = "1";
         }
       } catch (e) {
-        if (gen !== coverGen) return;
+        if (!token.isCurrent()) return;
         errors++;
         if (errors === 1) {
           window.App.toast("服务器错误，封面加载失败");
@@ -103,23 +106,27 @@
     async open(src) {
       source = src;
       client = window.Sources.client(src);
-      coverGen++;
-      window.App.show("collections");
+      const token = coverGen.next();
+      window.Navigation.push("collections");
       $("collections-source-name").textContent = src.name;
       $("collection-list").innerHTML = "";
       try {
-        collections = window.Sources.sortCollections(await client.collections());
+        const loaded = window.Sources.sortCollections(await client.collections());
+        if (!token.isCurrent()) return;
+        collections = loaded;
       } catch (e) {
+        if (!token.isCurrent()) return;
         window.App.toast("无法连接 " + src.name);
-        return window.App.show("sources");
+        return window.Navigation.pop();
       }
+      if (!token.isCurrent()) return;
       if (!collections.length) {
         window.App.toast(src.name + " 还在索引中，稍后再试");
-        return window.App.show("sources");
+        return window.Navigation.pop();
       }
       focusIdx = 0;
       render();
-      loadCovers(coverGen);
+      loadCovers(token);
     },
 
     onKey({ key }) {
@@ -128,14 +135,13 @@
       else if (key === "up") move(0, -1);
       else if (key === "down") move(0, 1);
       else if (key === "ok") {
-        window.GridScreen.backTarget = "collections";
         window.GridScreen.open(source, collections[focusIdx]);
       } else if (key === "play" || key === "green") {
         const c = collections[focusIdx];
         window.Playback.start(source, [c.id], { rememberCollection: c.id });
       } else if (key === "back") {
-        coverGen++;
-        return window.App.show("sources");
+        coverGen.cancel();
+        return window.Navigation.pop();
       } else return;
     },
   };

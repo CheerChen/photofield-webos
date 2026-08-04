@@ -1,0 +1,26 @@
+name: CI
+
+# Temporarily manual-only while the refactor workflow is being simplified.
+on:
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run check
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+      - name: Install webOS CLI
+        run: npm install --global @webos-tools/cli@3.2.5
+      - name: Verify IPK packaging
+        run: bash scripts/package.sh

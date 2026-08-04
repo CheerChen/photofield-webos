@@ -2,6 +2,7 @@
 import assert from "node:assert/strict";
 
 globalThis.window = {};
+await import("../js/core/lru.js");
 await import("../js/clients/photofield.js");
 const client = globalThis.window.PhotofieldClient.create({ baseUrl: "http://photos" });
 const photo = {
