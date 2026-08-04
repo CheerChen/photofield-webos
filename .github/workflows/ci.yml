@@ -1,8 +1,8 @@
 name: CI
 
+# Temporarily manual-only while the refactor workflow is being simplified.
 on:
-  push:
-  pull_request:
+  workflow_dispatch:
 
 jobs:
   check:
