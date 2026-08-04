@@ -38,6 +38,7 @@ function makePhotos(collectionId, count) {
       width: 1600,
       height: 1200,
       created_at: `2024-01-${String((i % 28) + 1).padStart(2, "0")}T10:00:00Z`,
+      latlng: i === 0 ? { lat: 35.6762, lng: 139.6503 } : null,
       video: false,
       filename: `${id}.jpg`,
       // A persistent small variant plus the on-demand preview keep the

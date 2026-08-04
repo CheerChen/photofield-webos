@@ -2,6 +2,7 @@ import "./core/store.js";
 import "./core/keys.js";
 import "./core/navigation.js";
 import "./core/lru.js";
+import "./core/geocode.js";
 import "./core/media.js";
 import "./core/generation.js";
 import "./core/image-loader.js";

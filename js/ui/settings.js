@@ -21,8 +21,9 @@
   ];
   const INFO_DISPLAYS = [
     { id: "all", label: "全部显示" },
+    { id: "details", label: "仅详情" },
     { id: "clock", label: "仅时钟" },
-    { id: "hidden", label: "隐藏" },
+    { id: "hidden", label: "全部隐藏" },
   ];
   const ALBUM_SORTS = [
     { id: "nameAsc", label: "按文件名升序" },

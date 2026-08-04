@@ -20,7 +20,7 @@
  *   thumbUrl/previewUrl              -> preferred URL compatibility helpers
  *   originalUrl(photo)               -> untouched file bytes
  *
- * Photo = {id, width, height, takenAt, isVideo, filename}
+ * Photo = {id, width, height, takenAt, latlng, isVideo, filename}
  */
 (function () {
   const STORE_KEY = "photofield.sources.v1";

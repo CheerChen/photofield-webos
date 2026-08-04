@@ -13,7 +13,9 @@ test("kiosk commits the first frame with album and date info", async ({ page }) 
   const bg = await page.locator("#kiosk-a .kiosk-photo").evaluate((el) => el.style.backgroundImage);
   expect(bg).toContain("/api/files/");
   await expect(page.locator("#kiosk-album")).toHaveText("Alpha");
-  await expect(page.locator("#kiosk-date")).toHaveText(/^\d{4}年\d{1,2}月\d{1,2}日$/);
+  await expect(page.locator("#kiosk-date")).toHaveText("2024年1月1日");
+  await expect(page.locator("#kiosk-location")).toHaveText("千叶市美滨区");
+  await expect(page.locator("#kiosk-location")).toHaveClass(/visible/);
   await expect(page.locator("#kiosk-hint")).toBeVisible();
 
   expect(state.errors).toEqual([]);

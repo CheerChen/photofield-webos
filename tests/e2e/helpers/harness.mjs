@@ -25,6 +25,12 @@ export async function bootToSources(page) {
   page.on("pageerror", (err) => state.errors.push(String(err)));
 
   await page.route("**/api/**", (route) => handleApi(route, state));
+  await page.route("https://api.bigdatacloud.net/**", (route) => json(route, {
+    countryName: "日本",
+    principalSubdivision: "千叶县",
+    city: "千叶市",
+    locality: "美滨区",
+  }));
 
   // Seed a cached source pointing at the mock server plus deterministic
   // settings (1s kiosk interval, sequential order, no lofi autostart) so

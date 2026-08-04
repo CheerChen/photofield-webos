@@ -11,7 +11,7 @@
     albumSort: "nameAsc", // collection list order: "nameAsc" | "nameDesc"
     mediaScope: "photos", // "photos" skips videos in viewer/kiosk | "all"
     autoLofi: true, // start a random Lofi color when entering Kiosk
-    infoDisplay: "clock", // "all" | "clock" | "hidden"
+    infoDisplay: "clock", // "all" | "details" | "clock" | "hidden"
     pinHash: null, // hash of 4-digit PIN, null = not set
     lastSource: null,
     lastCollection: null,

@@ -2,6 +2,30 @@
 
 All notable changes to this project are documented in this file.
 
+## [0.5.0] - 2026-08-05
+
+### Added
+
+- Redesign the source picker as photo-mosaic cards with a lightweight ambient backdrop and live scan status.
+- Add kiosk clock and date overlays, four information modes, reverse-geocoded EXIF locations, a music equalizer indicator, and four-direction Ken Burns motion for cover-mode photos.
+- Group Settings by purpose and add album sorting, photo-only or photo-and-video scope, and clearer row descriptions.
+- Add Playwright behavior tests for boot, collection and grid navigation, viewer, kiosk, and the complete Back stack.
+- Add ESLint, automatic unit-test discovery, and a manual GitHub Actions verification workflow.
+
+### Changed
+
+- Replace the hand-ordered script list with a single esbuild bundle targeting the webOS Chrome 53 runtime.
+- Unify full screens and overlays under stack-based navigation, including key activation and Back behavior.
+- Consolidate media cleanup, preview candidate selection, LRU caches, and cancellable async generation guards into shared core modules.
+- Move shared platform, packaging, and CDP tooling to the `webos-tv-kit` submodule.
+- Use compositor-based grid scrolling and larger persistent thumbnails for smoother browsing.
+
+### Fixed
+
+- Keep source scan progress and collection counts synchronized when returning from browsing or playback.
+- Prevent stale viewer, slideshow, cover, music, and navigation callbacks from updating screens after cancellation.
+- Release video and audio resources deterministically across slide changes, decoder fallback, and video-to-music transitions.
+
 ## [0.4.0] - 2026-08-02
 
 ### Added

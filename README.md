@@ -40,7 +40,7 @@
 
 客户端本身是空壳，**无内置照片源**。照片与视频需由你自己的 Photofield 实例提供。
 
-当前版本为 `0.4.0`，详见 [Releases](https://github.com/CheerChen/photofield-webos/releases)。更新记录见 [CHANGELOG.md](CHANGELOG.md)（英文）。
+当前版本为 `0.5.0`，详见 [Releases](https://github.com/CheerChen/photofield-webos/releases)。更新记录见 [CHANGELOG.zh-CN.md](CHANGELOG.zh-CN.md)。
 
 ---
 
@@ -48,15 +48,15 @@
 
 | 能力 | 说明 |
 | --- | --- |
-| 照片源自动发现 | 扫描已配置服务器的端口，缓存发现的实例 |
+| 照片源自动发现 | 扫描已配置服务器的端口，以照片拼贴卡片显示并缓存发现的实例与扫描状态 |
 | 相册浏览 | 四列封面卡片；子目录自动展开为独立相册 |
 | 照片网格 | 按服务端 wall 布局排布；从任意照片直接开始幻灯片播放 |
 | 查看器 | 全屏查看；加载期间继续导航时始终对齐最后一次输入 |
 | 视频播放 | 查看器与幻灯片播放均以原始文件有声播放；无法解码时回退到已加载的预览图 |
-| 幻灯片播放 | 可配播放间隔、填充模式（竖图氛围 / 完整显示 / 裁切填满）与播放顺序（随机 / 顺序）；播放期间抑制屏保 |
+| 幻灯片播放 | 可配播放间隔、填充模式和播放顺序；支持时钟、拍摄详情、地点解析与 Ken Burns 动效；播放期间抑制屏保 |
 | Lofi 背景音乐 | 红、绿、黄、蓝键切换四组主题歌单，上、下键切歌；列表播完随机换组；可设进入 Kiosk 自动播放 |
 | 遥控器导航 | D-pad / OK / 返回全覆盖；播放、暂停、快退、快进、停止等媒体键；彩键切换 Lofi 歌单 |
-| 设置 | 启动行为、播放间隔、相片填充、播放顺序、Lofi 自动播放、服务器地址（数字键盘输入完整 IP）与实例重扫 |
+| 设置 | 启动行为、播放间隔、相片填充、播放顺序、信息显示、相册排序、媒体范围、Lofi 自动播放、服务器地址与实例重扫 |
 
 ---
 
@@ -94,6 +94,7 @@ CDP 调试脚本也在其中）：
 
 ```bash
 git submodule update --init   # 首次 clone 后执行一次
+npm ci
 ./scripts/package.sh
 # → com.cheerchen.photofield_<version>_all.ipk
 ```
@@ -115,8 +116,8 @@ git submodule update --init   # 首次 clone 后执行一次
 | 层级 | 选型 |
 | --- | --- |
 | 运行时 | webOS Web App (WAM / Chromium) |
-| 语言 | 原生 JavaScript，无构建步骤、无第三方依赖 |
-| UI | 遥控器焦点导航 + 屏幕路由 |
+| 语言 | 原生 JavaScript；esbuild 打包，无运行时第三方依赖 |
+| UI | 遥控器焦点导航 + 栈式页面路由 |
 | 图片加载 | 变体候选链回退 + 解码尺寸预算 |
 | 播放 | 原生 `<video>` 硬件解码 |
 | 服务协议 | Photofield HTTP API（scene / file 接口） |
@@ -128,8 +129,17 @@ git submodule update --init   # 首次 clone 后执行一次
 ## 开发
 
 ```bash
-# 语法检查 + 单元测试
+# 安装开发依赖
+npm ci
+
+# 构建 dist/app.js
+npm run build
+
+# 构建检查 + ESLint + 单元测试
 npm run check
+
+# Playwright E2E 测试
+npm run test:e2e
 
 # 打 IPK（需要 ares-cli）
 ./scripts/package.sh

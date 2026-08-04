@@ -91,7 +91,7 @@ autoSetup();
 function autoSetup() {
   const ids = [
     "kiosk-hint", "kiosk-loading", "kiosk-paused", "kiosk-music",
-    "kiosk-music-dot", "kiosk-music-name", "kiosk-date", "kiosk-name",
+    "kiosk-music-dot", "kiosk-music-name", "kiosk-date", "kiosk-location", "kiosk-album", "kiosk-name",
   ];
   const nodes = new Map(ids.map((id) => [id, new Element("div")]));
   for (const id of ["kiosk-a", "kiosk-b"]) {

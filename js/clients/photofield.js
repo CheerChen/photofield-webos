@@ -127,6 +127,7 @@
         width: d.width,
         height: d.height,
         takenAt: d.created_at,
+        latlng: d.latlng || null,
         isVideo: !!d.video,
         filename: d.filename,
         thumbnails: d.thumbnails || [],

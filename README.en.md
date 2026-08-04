@@ -40,7 +40,7 @@ A **purpose-built webOS TV client** for [Photofield](https://github.com/SmilyOrg
 
 The client ships empty: **no built-in photo sources**. Photos and videos come from your own Photofield instance.
 
-Current version: `0.4.0`. See [Releases](https://github.com/CheerChen/photofield-webos/releases) and [CHANGELOG.md](CHANGELOG.md).
+Current version: `0.5.0`. See [Releases](https://github.com/CheerChen/photofield-webos/releases) and [CHANGELOG.md](CHANGELOG.md).
 
 ---
 
@@ -48,15 +48,15 @@ Current version: `0.4.0`. See [Releases](https://github.com/CheerChen/photofield
 
 | Capability | Details |
 | --- | --- |
-| Auto source discovery | Scans the configured server's ports and caches discovered instances |
+| Auto source discovery | Scans the configured server's ports and presents cached instances and scan status as photo-mosaic cards |
 | Collection browsing | Four-column cover cards; subdirectories expand into separate collections |
 | Photo grid | Follows the server-side wall layout; start slideshow playback from any photo |
 | Viewer | Fullscreen viewing; keeps showing the latest requested photo while navigating during loads |
 | Video playback | Viewer and slideshow stream the untouched source with sound; falls back to the already-loaded preview when undecodable |
-| Slideshow playback | Configurable interval, fit mode (portrait ambience / contain / cover) and order (shuffle / sequential); inhibits the screensaver while playing |
+| Slideshow playback | Configurable interval, fit mode and order; clock, capture details, reverse-geocoded locations and Ken Burns motion; inhibits the screensaver while playing |
 | Lofi background music | Colour keys switch four themed playlists, up/down keys change tracks; playlists shuffle to another colour when done; optional autoplay on kiosk entry |
 | Remote navigation | Full D-pad / OK / Back coverage; play, pause, rewind, fast-forward and stop media keys; colour keys switch Lofi playlists |
-| Settings | Launch behaviour, interval, fit, order, Lofi autoplay, server address (full IP via numeric keypad) and instance rescan |
+| Settings | Launch behaviour, interval, fit, order, information display, album sorting, media scope, Lofi autoplay, server address and instance rescan |
 
 ---
 
@@ -94,6 +94,7 @@ submodule first — the CDP debug tooling lives there too):
 
 ```bash
 git submodule update --init   # once after cloning
+npm ci
 ./scripts/package.sh
 # → com.cheerchen.photofield_<version>_all.ipk
 ```
@@ -115,8 +116,8 @@ git submodule update --init   # once after cloning
 | Layer | Choice |
 | --- | --- |
 | Runtime | webOS Web App (WAM / Chromium) |
-| Language | Vanilla JavaScript, no build step, no third-party dependencies |
-| UI | Remote focus navigation + screen routing |
+| Language | Vanilla JavaScript bundled with esbuild; no runtime third-party dependencies |
+| UI | Remote focus navigation + stack-based screen routing |
 | Image loading | Ordered candidate fallback + decoded-size budget |
 | Playback | Native `<video>` hardware decode |
 | Service protocol | Photofield HTTP API (scene / file endpoints) |
@@ -128,8 +129,17 @@ git submodule update --init   # once after cloning
 ## Development
 
 ```bash
-# syntax check + unit tests
+# install development dependencies
+npm ci
+
+# build dist/app.js
+npm run build
+
+# build verification + ESLint + unit tests
 npm run check
+
+# Playwright end-to-end tests
+npm run test:e2e
 
 # build the IPK (requires ares-cli)
 ./scripts/package.sh

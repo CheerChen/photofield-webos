@@ -31,6 +31,7 @@
   let videoSession = null;
   const videoGeneration = window.Generation.create();
   let slideshowPaused = false;
+  const infoGeneration = window.Generation.create();
   let infoTimer = null;
   let clockTimer = null;
   let musicTimer = null;
@@ -74,6 +75,7 @@
     const screen = $("screen-kiosk");
     if (!screen || !screen.classList) return;
     screen.classList.toggle("kiosk-info-hidden", mode === "hidden" && !temporary);
+    screen.classList.toggle("kiosk-info-details", mode === "details" && !temporary);
     screen.classList.toggle("kiosk-info-clock", mode === "clock" && !temporary);
     screen.classList.toggle("kiosk-info-visible", mode === "all" || temporary);
     clearTimeout(infoTimer);
@@ -91,10 +93,33 @@
     return slideshowPaused;
   }
 
+  function clearPhotoInfo() {
+    $("kiosk-date").textContent = "";
+    $("kiosk-album").textContent = "";
+    const location = $("kiosk-location");
+    location.classList.remove("visible");
+    location.textContent = "";
+  }
+
   function setPhotoInfo(photo) {
+    const token = infoGeneration.next();
     $("kiosk-date").textContent = fmtDate(photo.takenAt);
     const album = $("kiosk-album");
     if (album) album.textContent = collectionNames[photo.collectionId] || "";
+    const location = $("kiosk-location");
+    location.classList.remove("visible");
+    location.textContent = "";
+    if (!photo.latlng || !window.Geocode) return;
+    window.Geocode.reverse(photo.latlng).then((place) => {
+      if (!token.isCurrent() || !place) return;
+      location.textContent = place;
+      // Commit the hidden state before adding the class so cached geocodes
+      // animate too instead of appearing in the same paint.
+      void location.offsetWidth;
+      requestAnimationFrame(() => {
+        if (token.isCurrent()) location.classList.add("visible");
+      });
+    }).catch(() => {});
   }
 
   function clearKenBurns(photo) {
@@ -607,6 +632,7 @@
 
   function leave() {
     openGeneration.cancel();
+    infoGeneration.cancel();
     cancelPendingFrame();
     if (videoSession) endVideoSession(videoSession, false);
     if (player) player.stop();
@@ -635,6 +661,8 @@
     async open(source, collectionIds, opts) {
       opts = opts || {};
       const openToken = openGeneration.next();
+      infoGeneration.cancel();
+      clearPhotoInfo();
       cancelPendingFrame();
       if (videoSession) endVideoSession(videoSession, false);
       window.Navigation.push("kiosk");
