@@ -29,18 +29,31 @@
 
 ---
 
+## 项目展示
+
+| 源选择 | 相册浏览 | 照片网格 |
+| :---: | :---: | :---: |
+| ![源选择](assets/screenshots/01-sources.webp) | ![相册浏览](assets/screenshots/02-collections.webp) | ![照片网格](assets/screenshots/03-grid.webp) |
+
+| 全屏查看器 | 幻灯片 | 设置 |
+| :---: | :---: | :---: |
+| ![全屏查看器](assets/screenshots/04-viewer.webp) | ![Kiosk 幻灯片](assets/screenshots/05-kiosk.webp) | ![设置](assets/screenshots/06-settings.webp) |
+
+---
+
 ## 这是什么
 
 本仓库是 **[Photofield](https://github.com/SmilyOrg/photofield)** 在 **LG webOS 电视**上的专用客户端（非浏览器套壳）。
 
 - 对接自托管的 Photofield 实例：自动发现照片源、浏览相册、全屏查看照片
 - 为 TV UI 与遥控器 D-pad 设计焦点导航
-- Kiosk 幻灯片模式：可配间隔、填充与顺序，支持彩键 Lofi 背景音乐
-- 照片与视频均走系统原生解码，**不需要 root**；开发者模式或 [Homebrew Channel](https://github.com/webosbrew/webos-homebrew-channel) 即可安装
+- Kiosk 幻灯片模式：可配间隔、填充与顺序
+- 内置一组 Lofi 背景音乐
+- 照片与视频均走系统原生解码，**不需要 root**
 
 客户端本身是空壳，**无内置照片源**。照片与视频需由你自己的 Photofield 实例提供。
 
-当前版本为 `0.5.0`，详见 [Releases](https://github.com/CheerChen/photofield-webos/releases)。更新记录见 [CHANGELOG.zh-CN.md](CHANGELOG.zh-CN.md)。
+当前版本详见 [Releases](https://github.com/CheerChen/photofield-webos/releases)。更新记录见 [CHANGELOG.zh-CN.md](CHANGELOG.zh-CN.md)。
 
 ---
 

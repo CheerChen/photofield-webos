@@ -340,9 +340,9 @@ html, body {
 #kiosk-clock-time { font-size:40px; font-weight:600; font-variant-numeric:tabular-nums; }
 #kiosk-clock-date { font-size:20px; color:#c8cdd8; margin-top:4px; }
 #screen-kiosk::after { content:""; position:absolute; z-index:2; left:0; right:0; bottom:0; height:160px; pointer-events:none; background:linear-gradient(transparent,var(--scrim)); }
-.kiosk-info-details .kiosk-clock, .kiosk-info-details .kiosk-music, .kiosk-info-details .kiosk-hint { opacity:0; pointer-events:none; transform:translateY(4px); }
-.kiosk-info-clock .kiosk-meta, .kiosk-info-clock .kiosk-music, .kiosk-info-clock .kiosk-hint { opacity:0; pointer-events:none; transform:translateY(4px); }
-.kiosk-info-hidden .kiosk-meta, .kiosk-info-hidden .kiosk-music, .kiosk-info-hidden .kiosk-hint, .kiosk-info-hidden .kiosk-clock { opacity:0; pointer-events:none; transform:translateY(4px); }
+.kiosk-info-details .kiosk-clock { opacity:0; pointer-events:none; transform:translateY(4px); }
+.kiosk-info-clock .kiosk-meta { opacity:0; pointer-events:none; transform:translateY(4px); }
+.kiosk-info-hidden .kiosk-meta, .kiosk-info-hidden .kiosk-clock { opacity:0; pointer-events:none; transform:translateY(4px); }
 .kiosk-paused {
   position: absolute;
   top: 40px;

@@ -29,18 +29,31 @@
 
 ---
 
+## Screenshots
+
+| Source selection | Collections | Photo grid |
+| :---: | :---: | :---: |
+| ![Source selection](assets/screenshots/01-sources.webp) | ![Collections](assets/screenshots/02-collections.webp) | ![Photo grid](assets/screenshots/03-grid.webp) |
+
+| Fullscreen viewer | Slideshow | Settings |
+| :---: | :---: | :---: |
+| ![Fullscreen viewer](assets/screenshots/04-viewer.webp) | ![Kiosk slideshow](assets/screenshots/05-kiosk.webp) | ![Settings](assets/screenshots/06-settings.webp) |
+
+---
+
 ## What this is
 
 A **purpose-built webOS TV client** for [Photofield](https://github.com/SmilyOrg/photofield) — not a browser wrapper.
 
 - Talks to a self-hosted Photofield instance: auto-discovers photo sources, browses collections, views photos fullscreen
 - TV UI with remote D-pad focus navigation
-- Kiosk slideshow mode: configurable interval, fit and order, with colour-key Lofi background music
-- Photos and videos both use native system decoding — **no root required**; installs via Developer Mode or [Homebrew Channel](https://github.com/webosbrew/webos-homebrew-channel)
+- Kiosk slideshow mode: configurable interval, fit and order
+- Bundled Lofi background music
+- Photos and videos both use native system decoding — **no root required**
 
 The client ships empty: **no built-in photo sources**. Photos and videos come from your own Photofield instance.
 
-Current version: `0.5.0`. See [Releases](https://github.com/CheerChen/photofield-webos/releases) and [CHANGELOG.md](CHANGELOG.md).
+See [Releases](https://github.com/CheerChen/photofield-webos/releases) and [CHANGELOG.md](CHANGELOG.md).
 
 ---
 
