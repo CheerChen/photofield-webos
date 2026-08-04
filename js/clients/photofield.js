@@ -16,6 +16,13 @@
   // a TV-friendly density that also keeps focus scrolling cheap.
   const GRID_LAYOUT = "FLEX";
   const GRID_IMAGE_H = 420;
+  // FLEX injects inline date/location text headers ("Aux" cells) into the row
+  // packing whenever the source has geo data. The server draws those as text,
+  // but this client only fetches photo regions and renders <img> cells, so a
+  // header reserves horizontal space that shows up as an empty gap — the first
+  // photo of a section gets pushed right, leaving a black indent on its left.
+  // The "nogeo" tweak drops those headers so every row is a solid photo run.
+  const GRID_TWEAKS = "nogeo";
   // Decoded-bitmap budget per surface: fullscreen holds at most three images
   // (the player window), but the grid decodes about 15 cells per screen, so it
   // gets a stricter cap. Animated GIFs are never admitted as originals.
@@ -69,6 +76,7 @@
           viewport_height: VIEWPORT_H,
           image_height: GRID_IMAGE_H,
           layout: GRID_LAYOUT,
+          tweaks: GRID_TWEAKS,
         }),
       });
       // Scene layout is async (202): poll until the layout settles. A settled
@@ -94,10 +102,11 @@
         }
       }
       // Reuse a matching scene the server already has (e.g. from the web UI).
+      // Match on tweaks too so a header-laden web-UI scene is never adopted.
       const list = await api(
         "/scenes?collection_id=" + encodeURIComponent(collectionId) +
           "&viewport_width=" + VIEWPORT_W + "&image_height=" + GRID_IMAGE_H +
-          "&layout=" + GRID_LAYOUT
+          "&layout=" + GRID_LAYOUT + "&tweaks=" + encodeURIComponent(GRID_TWEAKS)
       );
       const existing = (list.items || []).find((s) => !s.loading && !s.stale);
       const scene = existing || (await createScene(collectionId));

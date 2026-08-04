@@ -22,6 +22,8 @@ export async function bootToSources(page) {
   state.errors = [];
   state.apiCalls = [];
   state.probeCalls = [];
+  state.sceneCreateBodies = [];
+  state.sceneReuseQueries = [];
   page.on("pageerror", (err) => state.errors.push(String(err)));
 
   await page.route("**/api/**", (route) => handleApi(route, state));
@@ -124,9 +126,11 @@ function handleApi(route, state) {
   if (p === "/api/scenes") {
     if (method === "POST") {
       const body = req.postDataJSON();
+      state.sceneCreateBodies.push(body);
       return json(route, state.createScene(body.collection_id));
     }
     // Scene-reuse query: nothing pre-exists, so the client creates its own.
+    state.sceneReuseQueries.push(u.search);
     return json(route, { items: [] });
   }
 

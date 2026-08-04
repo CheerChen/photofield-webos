@@ -39,3 +39,23 @@ test("back returns to the album list", async ({ page }) => {
 
   expect(state.errors).toEqual([]);
 });
+
+test("grid scene requests suppress FLEX date/location headers", async ({ page }) => {
+  // FLEX otherwise injects text-only "Aux" header cells the TV client cannot
+  // render, leaving empty gaps that indent the first photo of each section.
+  // Both the create body and the reuse lookup must carry the nogeo tweak so a
+  // header-laden web-UI scene is neither created nor adopted.
+  const state = await bootAtGrid(page);
+
+  expect(state.sceneCreateBodies.length).toBeGreaterThan(0);
+  for (const body of state.sceneCreateBodies) {
+    expect(body.layout).toBe("FLEX");
+    expect(String(body.tweaks || "")).toContain("nogeo");
+  }
+  expect(state.sceneReuseQueries.length).toBeGreaterThan(0);
+  for (const search of state.sceneReuseQueries) {
+    expect(new URLSearchParams(search).get("tweaks")).toContain("nogeo");
+  }
+
+  expect(state.errors).toEqual([]);
+});
