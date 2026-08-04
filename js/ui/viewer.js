@@ -8,6 +8,7 @@
   let client = null;
   let index = 0;
   let count = 0;
+  let moveDir = 0; // direction of the last move(); 0 = opened directly
   let loading = false;
   let viewerGeneration = 0;
   let loadGeneration = 0;
@@ -177,6 +178,15 @@
       const photo = await client.photoAt(collection.id, at);
       if (!current(gen, token, at)) return;
       if (!photo) return;
+      // Media scope: while navigating, step over videos in the same
+      // direction (the finally block chains show() when index moved).
+      // A video opened directly from the grid still plays — that is an
+      // explicit choice, not a passive switch.
+      if (photo.isVideo && moveDir && window.Store.get("mediaScope") !== "all") {
+        const next = at + moveDir;
+        if (next >= 0 && next < count) index = next;
+        return;
+      }
       if (photo.isVideo) await showVideo(photo, gen, token, at);
       else await showImage(photo, gen, token, at);
     } catch (e) {
@@ -193,6 +203,7 @@
     const next = index + delta;
     if (next < 0 || next >= count) return;
     index = next;
+    moveDir = delta;
     // Navigation must release a playing video immediately rather than waiting
     // for the poster/image request to finish.
     cancelLoad();
@@ -207,6 +218,7 @@
       collection = col;
       client = window.Sources.client(src);
       index = startIndex;
+      moveDir = 0;
       try {
         count = await client.photoCount(col.id);
       } catch (e) {

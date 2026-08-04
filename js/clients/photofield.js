@@ -12,11 +12,12 @@
   const VIEWPORT_H = 1080;
   // WALL layout scales rows to ~1.7% of viewport width (it's a zoomable tile
   // map, image_height is ignored). FLEX is the justified-gallery layout and
-  // honors image_height — 300px rows give ~29 photos per 1080p screen.
+  // honors image_height — 420px rows give roughly 15 photos per 1080p screen,
+  // a TV-friendly density that also keeps focus scrolling cheap.
   const GRID_LAYOUT = "FLEX";
-  const GRID_IMAGE_H = 300;
+  const GRID_IMAGE_H = 420;
   // Decoded-bitmap budget per surface: fullscreen holds at most three images
-  // (the player window), but the grid decodes about 29 cells per screen, so it
+  // (the player window), but the grid decodes about 15 cells per screen, so it
   // gets a stricter cap. Animated GIFs are never admitted as originals.
   const ORIGINAL_MAX_EDGE_PREVIEW = 4096;
   const ORIGINAL_MAX_EDGE_THUMB = 2048;
@@ -255,6 +256,16 @@
       return candidateUrls(photo, [...persistentFallback, ...dynamicFallback], want);
     }
 
+    function ambienceCandidates(photo, width) {
+      // Dedicated low-resolution feed for blurred ambience layers. The layer
+      // is blurred anyway, so persistent small variants come first and the
+      // original is never a candidate: TV GPUs pay per decoded pixel.
+      const want = width || 256;
+      const persistent = (photo.thumbnails || [])
+        .filter((variant) => variant && variantKind(variant) === "persistent");
+      return candidateUrls(photo, sortVariants(persistent, want), want);
+    }
+
     function previewCandidates(photo, width) {
       const want = width || 1920;
       const dynamic = (photo.thumbnails || [])
@@ -327,7 +338,7 @@
         const result = await withSceneRetry(collectionId, async (s) => {
           try {
             const r = await api("/scenes/" + s.id + "/regions/" + (i + 1));
-            return r.data ? mapPhoto(r.data) : null;
+            return r.data ? Object.assign(mapPhoto(r.data), { collectionId }) : null;
           } catch (e) {
             if (e.status === 404) return null; // id hole — caller skips
             throw e;
@@ -362,6 +373,7 @@
        * old single-URL helpers for callers outside this app, but make the
        * candidate-chain methods the source of truth for image loading. */
       thumbCandidates,
+      ambienceCandidates,
       previewCandidates,
       thumbUrl(photo, target) {
         return thumbCandidates(photo, target)[0];

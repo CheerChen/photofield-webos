@@ -15,6 +15,7 @@
  *   photoAt(collectionId, i) -> Promise<Photo|null>   (null = hole, skip it)
  *   slice(collectionId, y, h)-> Promise<[{i, x, y, w, h, photo}]>  grid rows
  *   thumbCandidates(photo, width)   -> ordered grid-thumbnail URLs
+ *   ambienceCandidates(photo, width)-> ordered low-res blur-layer URLs, never the original
  *   previewCandidates(photo, width) -> ordered fullscreen-image URLs
  *   thumbUrl/previewUrl              -> preferred URL compatibility helpers
  *   originalUrl(photo)               -> untouched file bytes
@@ -157,5 +158,10 @@
     busy: (id) => busy.get(id) || null,
     setBusy(id, info) { busy.set(id, info); },
     clearBusy(id) { busy.delete(id); },
+    /* Display/playback order for a collections() result. The client contract
+     * returns name-ascending, so descending is just a reversed copy. */
+    sortCollections(cols) {
+      return window.Store.get("albumSort") === "nameDesc" ? cols.slice().reverse() : cols;
+    },
   };
 })();

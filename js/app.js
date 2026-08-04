@@ -49,9 +49,6 @@
     window.Keys.bind("ipinput", (e) => window.IpInput.onKey(e));
     window.Keys.bind("settings", (e) => window.SettingsScreen.onKey(e));
 
-    $("grid-viewport").addEventListener("scroll", (e) =>
-      window.GridScreen.onScroll(e.target.scrollTop)
-    );
 
     // Discover sources by probing the port range. Cached sources (from
     // localStorage) are already loaded synchronously by Sources, so the

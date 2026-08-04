@@ -28,7 +28,9 @@
     async playSource(source, opts) {
       opts = opts || {};
       try {
-        const cols = await window.Sources.client(source).collections();
+        const cols = window.Sources.sortCollections(
+          await window.Sources.client(source).collections()
+        );
         this.start(
           source,
           cols.map((c) => c.id),
@@ -47,7 +49,7 @@
       opts = opts || {};
       try {
         const client = window.Sources.client(source);
-        const cols = await client.collections();
+        const cols = window.Sources.sortCollections(await client.collections());
         const lastCol = window.Store.get("lastCollection");
         const ids =
           lastCol && cols.some((c) => c.id === lastCol)

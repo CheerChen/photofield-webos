@@ -6,6 +6,11 @@
   --dim: #8b91a0;
   --accent: #e5484d;
   --focus: #4c9aff;
+  --sunset-amber: #ffbe6f;
+  --sunset-coral: #ff8259;
+  --sunset-rose: #ef5a68;
+  --sunset-dusk: #7e58a8;
+  --scrim: rgba(0, 0, 0, 0.55);
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -32,6 +37,25 @@ html, body {
 
 .screen { position: absolute; inset: 0; }
 .overlay-screen { background: rgba(0, 0, 0, 0.96); z-index: 10; }
+@keyframes ui-rise-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes equalize { 0%,100% { transform:scaleY(.35); } 50% { transform:scaleY(1); } }
+@keyframes scan-shimmer { from { transform:translateX(-130%); } to { transform:translateX(280%); } }
+@keyframes kiosk-ken-burns-tl-br {
+  from { transform:translate(-3%, -3%) scale(1.08); }
+  to { transform:translate(3%, 3%) scale(1.16); }
+}
+@keyframes kiosk-ken-burns-br-tl {
+  from { transform:translate(3%, 3%) scale(1.08); }
+  to { transform:translate(-3%, -3%) scale(1.16); }
+}
+@keyframes kiosk-ken-burns-tr-bl {
+  from { transform:translate(3%, -3%) scale(1.08); }
+  to { transform:translate(-3%, 3%) scale(1.16); }
+}
+@keyframes kiosk-ken-burns-bl-tr {
+  from { transform:translate(-3%, 3%) scale(1.08); }
+  to { transform:translate(3%, -3%) scale(1.16); }
+}
 
 /* ---------- topbar / hintbar ---------- */
 
@@ -58,42 +82,31 @@ html, body {
 
 /* ---------- source cards ---------- */
 
-.source-row {
-  display: flex;
-  gap: 48px;
-  padding: 80px 72px;
-}
-.source-card {
-  width: 520px;
-  height: 300px;
-  border-radius: 16px;
-  background: linear-gradient(145deg, var(--panel), var(--panel-2));
-  border: 4px solid transparent;
-  padding: 36px;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  transition: transform 0.15s ease, border-color 0.15s ease;
-  position: relative;
-}
-.source-card.focused {
-  border-color: var(--focus);
-  transform: scale(1.04);
-}
-/* A scanning source stays in the list but reads as inert: dimmed, with the
- * accent border instead of the focus blue so a focused busy card is still
- * distinguishable from a focused playable one. */
-.source-card.busy { opacity: 0.45; }
-.source-card.busy.focused { border-color: var(--accent); }
-.source-card-name { font-size: 40px; font-weight: 700; }
-.source-card-count { font-size: 24px; color: var(--dim); }
-.source-card-play {
-  position: absolute;
-  right: 28px;
-  bottom: 24px;
-  font-size: 22px;
-  color: var(--dim);
-}
+/* No CSS blur filter here: a filter's GPU cost scales with the full-screen
+ * output area and stalls TV hardware for ~200ms per repaint. The "blur" is
+ * a tiny canvas (drawn by sources.js at 192x108 via double downsampling)
+ * that the GPU merely stretches; the fade-out is faster than the JS dwell
+ * delay so the redraw happens while the layer is fully transparent. */
+.source-atmosphere { position:absolute; inset:-48px; opacity:0; transition:opacity .3s ease; pointer-events:none; }
+.source-atmosphere canvas { width:100%; height:100%; display:block; }
+.source-atmosphere.visible { opacity:.32; transition:opacity .7s ease; }
+.source-atmosphere::after { content:""; position:absolute; inset:0; background:linear-gradient(110deg, rgba(14,15,18,.88), rgba(14,15,18,.52)); }
+.source-viewport { position:absolute; left:0; right:0; top:128px; bottom:108px; overflow:hidden; }
+/* will-change promotes the row and each card to their own compositor layers:
+ * the row slide and the focus scale then animate without re-rasterizing the
+ * mosaic images every frame. box-shadow is deliberately NOT transitioned —
+ * animating a blurred shadow repaints the card on every frame. */
+.source-row { display:flex; gap:28px; padding:80px 72px; width:max-content; transition:transform .4s cubic-bezier(.2,.8,.2,1); will-change:transform; }
+.source-card { width:512px; height:340px; border-radius:18px; background:var(--panel); border:3px solid rgba(255,255,255,.1); transition:transform .25s ease; will-change:transform; position:relative; overflow:hidden; }
+.source-card.focused { border-color:transparent; transform:scale(1.04); box-shadow:0 0 0 3px var(--sunset-coral), 0 0 30px rgba(239,90,104,.35); }
+.source-card.busy { opacity:.55; }
+.source-card.busy::after { content:""; position:absolute; inset:auto 0 0; height:3px; background:linear-gradient(90deg,transparent,var(--sunset-amber),transparent); animation:scan-shimmer 1.3s linear infinite; }
+.source-card.busy.focused { box-shadow:0 0 0 3px var(--sunset-amber); }
+.source-card-mosaic { position:absolute; inset:0; display:grid; grid-template-columns:1.4fr 1fr; grid-template-rows:1fr 1fr; gap:2px; background:var(--panel-2); }
+.source-card-mosaic span { background:linear-gradient(135deg,#34303c,#1d2330); background-position:center; background-size:cover; }.source-card-mosaic span:first-child { grid-row:span 2; }
+.source-card-scrim { position:absolute; inset:0; padding:28px 30px; display:flex; flex-direction:column; justify-content:flex-end; background:linear-gradient(180deg,transparent 32%,rgba(0,0,0,.78)); }
+.source-card-name { font-size:38px; font-weight:700; }.source-card-count { font-size:24px; color:var(--dim); }
+.source-card-play { position:absolute; right:28px; bottom:26px; font-size:22px; color:var(--dim); }
 .source-card-lock { font-size: 28px; }
 .source-empty {
   position: absolute;
@@ -129,13 +142,17 @@ html, body {
 .collection-card {
   border-radius: 14px;
   background: var(--panel);
-  border: 4px solid transparent;
+  border: 3px solid rgba(255, 255, 255, 0.1);
   overflow: hidden;
-  transition: transform 0.15s ease, border-color 0.15s ease;
+  /* Same focus language as source cards: only transform animates; the
+   * shadow ring swaps instantly because animating a blurred shadow
+   * repaints the card on every frame. */
+  transition: transform 0.15s ease;
 }
 .collection-card.focused {
-  border-color: var(--focus);
+  border-color: transparent;
   transform: scale(1.03);
+  box-shadow: 0 0 0 3px var(--sunset-coral), 0 0 30px rgba(239, 90, 104, 0.35);
 }
 .collection-cover {
   width: 100%;
@@ -177,7 +194,10 @@ html, body {
   bottom: 72px;
   overflow: hidden;
 }
-.grid-canvas { position: relative; width: 1920px; }
+/* Scrolling is a composited translateY set by grid.js — will-change keeps
+ * the tall canvas on its own layer so focus scrolling never re-rasterizes
+ * loaded cells, and the transition makes each step glide. */
+.grid-canvas { position: relative; width: 1920px; will-change: transform; transition: transform .35s cubic-bezier(.2,.8,.2,1); }
 .grid-cell {
   position: absolute;
   background: var(--panel);
@@ -191,7 +211,7 @@ html, body {
   object-fit: cover;
   display: block;
 }
-.grid-cell.focused { border-color: var(--focus); z-index: 2; }
+.grid-cell.focused { border-color: transparent; box-shadow: 0 0 0 3px var(--sunset-coral); z-index: 2; }
 .grid-cell .video-badge {
   position: absolute;
   right: 6px;
@@ -289,6 +309,18 @@ html, body {
 }
 .kiosk-photo { background-size: contain; }
 .kiosk-frame.fit-cover .kiosk-photo { background-size: cover; }
+.kiosk-frame.fit-cover .kiosk-photo.kiosk-ken-burns {
+  will-change: transform;
+  animation-duration: 1s;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+  animation-play-state: running;
+}
+.kiosk-frame.fit-cover .kiosk-photo.kiosk-ken-burns.kiosk-ken-burns-tl-br { animation-name: kiosk-ken-burns-tl-br; }
+.kiosk-frame.fit-cover .kiosk-photo.kiosk-ken-burns.kiosk-ken-burns-br-tl { animation-name: kiosk-ken-burns-br-tl; }
+.kiosk-frame.fit-cover .kiosk-photo.kiosk-ken-burns.kiosk-ken-burns-tr-bl { animation-name: kiosk-ken-burns-tr-bl; }
+.kiosk-frame.fit-cover .kiosk-photo.kiosk-ken-burns.kiosk-ken-burns-bl-tr { animation-name: kiosk-ken-burns-bl-tr; }
+#screen-kiosk.kiosk-slideshow-paused .kiosk-frame.fit-cover .kiosk-photo.kiosk-ken-burns { animation-play-state: paused; }
 .kiosk-frame.fit-cover .kiosk-video-slot video { object-fit: cover; }
 .kiosk-frame.fit-ambient .kiosk-backdrop { display: block; }
 .kiosk-frame.fit-ambient .kiosk-photo { inset: 24px; }
@@ -296,12 +328,18 @@ html, body {
 .kiosk-meta {
   position: absolute;
   left: 72px;
-  bottom: 56px;
+  bottom: 54px;
   text-shadow: 0 1px 8px #000;
-  transition: opacity 0.4s ease;
+  z-index:3; transition:opacity .4s ease, transform .4s ease;
 }
 .kiosk-date { font-size: 34px; font-weight: 600; }
-.kiosk-name { font-size: 22px; color: #c8cdd8; margin-top: 6px; }
+.kiosk-album { font-size:22px; color:#c8cdd8; margin-bottom:6px; }
+.kiosk-clock { position:absolute; right:72px; bottom:54px; z-index:3; text-align:right; text-shadow:0 1px 8px #000; transition:opacity .4s ease, transform .4s ease; }
+#kiosk-clock-time { font-size:40px; font-weight:600; font-variant-numeric:tabular-nums; }
+#kiosk-clock-date { font-size:20px; color:#c8cdd8; margin-top:4px; }
+#screen-kiosk::after { content:""; position:absolute; z-index:2; left:0; right:0; bottom:0; height:160px; pointer-events:none; background:linear-gradient(transparent,var(--scrim)); }
+.kiosk-info-clock .kiosk-meta, .kiosk-info-clock .kiosk-music, .kiosk-info-clock .kiosk-hint { opacity:0; pointer-events:none; transform:translateY(4px); }
+.kiosk-info-hidden .kiosk-meta, .kiosk-info-hidden .kiosk-music, .kiosk-info-hidden .kiosk-hint, .kiosk-info-hidden .kiosk-clock { opacity:0; pointer-events:none; transform:translateY(4px); }
 .kiosk-paused {
   position: absolute;
   top: 40px;
@@ -314,7 +352,7 @@ html, body {
 .kiosk-music {
   position: absolute;
   top: 40px;
-  left: 72px;
+  left: 72px; z-index:3;
   display: flex;
   align-items: center;
   gap: 12px;
@@ -322,13 +360,15 @@ html, body {
   border-radius: 10px;
   background: rgba(0, 0, 0, 0.6);
   color: #e8eaef;
-  font-size: 22px;
+  /* No animation-fill: a filled keyframe value outranks normal declarations
+   * in the cascade and would block the .fade / info-mode opacity rules. */
+  font-size: 22px; animation:ui-rise-in .25s ease;
 }
-.kiosk-music > span:first-child {
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-}
+.kiosk-music.fade { opacity:0; transition:opacity .7s ease; }
+.kiosk-equalizer { display:flex; align-items:flex-end; gap:3px; width:18px; height:20px; }
+.kiosk-equalizer i { display:block; width:4px; height:100%; border-radius:2px; background:currentColor; transform-origin:bottom; animation:equalize .75s ease-in-out infinite; }
+.kiosk-equalizer i:nth-child(2) { animation-delay:.16s; }.kiosk-equalizer i:nth-child(3) { animation-delay:.31s; }
+.kiosk-equalizer.paused i { animation-play-state:paused; transform:scaleY(.28); opacity:.45; }
 .kiosk-loading {
   position: absolute;
   inset: 0;
@@ -349,7 +389,7 @@ html, body {
   background: rgba(0, 0, 0, 0.6);
   color: #c8cdd8;
   font-size: 22px;
-  opacity: 1;
+  z-index:3; opacity: 1;
   transition: opacity 1s ease;
   pointer-events: none;
 }
@@ -404,7 +444,7 @@ html, body {
   justify-content: center;
   font-size: 36px;
 }
-.pin-key.focused { border-color: var(--focus); }
+.pin-key.focused { border-color: transparent; box-shadow: 0 0 0 3px var(--sunset-coral); }
 
 /* ---------- IP input (reuses pin-pad grid) ---------- */
 
@@ -427,24 +467,27 @@ html, body {
   border: 3px solid transparent;
   color: var(--text);
 }
-.ipinput-seg.focused { border-color: var(--focus); }
+.ipinput-seg.focused { border-color: transparent; box-shadow: 0 0 0 3px var(--sunset-coral); }
 .ipinput-seg.empty { color: var(--dim); }
 .ipinput-dot { color: var(--dim); }
 
-.settings-list { display: flex; flex-direction: column; gap: 20px; }
+.settings-list { display:flex; flex-direction:column; gap:8px; min-width:700px; }
+.settings-group { margin:12px 0 2px; color:var(--dim); font-size:18px; font-weight:600; letter-spacing:.18em; }
 .settings-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 80px;
-  padding: 20px 28px;
+  padding: 12px 24px;
   border-radius: 12px;
   background: var(--panel-2);
   border: 3px solid transparent;
   font-size: 26px;
 }
-.settings-row.focused { border-color: var(--focus); }
-.settings-row .value { color: var(--focus); font-weight: 600; }
+.settings-row.focused { border-color:transparent; box-shadow:0 0 0 3px var(--sunset-coral); }
+.settings-row .value { color:var(--sunset-amber); font-weight:600; }
+.settings-action { justify-content:center; margin-top:4px; background:rgba(255,190,111,.1); color:var(--sunset-amber); }
+.settings-action .value { display:none; }
 
 /* ---------- toast ---------- */
 
@@ -464,8 +507,8 @@ html, body {
  * longer lifetime so a routine toast (e.g. track name) cannot overwrite a
  * "playback stopped" message the user needs to read. */
 .toast-error {
-  bottom: auto;
-  top: 40px;
+  bottom: 160px;
+  top: auto;
   border-color: var(--accent);
   color: var(--accent);
   font-weight: 600;
