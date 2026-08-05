@@ -142,7 +142,7 @@
       for (const state of cache.values()) cancelState(state);
       cache.clear();
       if (onError) {
-        const error = new Error("服务器连续错误，已停止播放");
+        const error = new Error(window.I18N.t("player.serverErrors"));
         error.code = "STOPPED";
         onError(error);
       }
@@ -197,7 +197,7 @@
         for (const state of cache.values()) cancelState(state);
         cache.clear();
         if (onError) {
-          const error = new Error("没有可播放的照片");
+          const error = new Error(window.I18N.t("player.noPhotos"));
           error.code = "STOPPED";
           onError(error);
         }

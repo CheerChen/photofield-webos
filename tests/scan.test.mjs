@@ -55,6 +55,7 @@ window.Sources = {
   clearBusy: (id) => busyMap.delete(id),
 };
 
+await import("../js/core/i18n.js");
 await import("../js/core/scan.js");
 const Scan = window.Scan;
 const source = { id: "port-8001", name: "X" };
@@ -158,7 +159,7 @@ function setup(client) {
   assert.equal(resetCalls, 1);
   assert.equal(window.Sources.busy(source.id), null);
   assert.equal(refreshes, 1);
-  assert.ok(toasts.some((t) => /扫描完成/.test(t.msg)));
+  assert.ok(toasts.some((t) => t.msg === window.I18N.t("scan.done", { name: source.name })));
 }
 
 // --- active start: idempotent (second press is a no-op) ---------------
@@ -206,7 +207,7 @@ function setup(client) {
   setup(client);
   await Scan.start(source);
   assert.equal(window.Sources.busy(source.id), null);
-  assert.ok(toasts.some((t) => /扫描完成/.test(t.msg)));
+  assert.ok(toasts.some((t) => t.msg === window.I18N.t("scan.done", { name: source.name })));
 }
 
 // --- active start: persistent errors surface an error toast ----------
@@ -220,7 +221,7 @@ function setup(client) {
   setup(client);
   await Scan.start(source);
   assert.equal(window.Sources.busy(source.id).status, "error");
-  assert.ok(toasts.some((t) => t.kind === "error" && /扫描失败/.test(t.msg)));
+  assert.ok(toasts.some((t) => t.kind === "error" && t.msg === window.I18N.t("scan.failed", { msg: "server down" })));
 }
 
 globalThis.setTimeout = realSetTimeout;

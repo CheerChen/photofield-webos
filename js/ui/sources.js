@@ -42,22 +42,22 @@
     ctx.fillRect(0, 0, canvas.width, canvas.height);
   }
 
-  const SCAN_PHASES = {
-    INDEX_FILES: "扫描文件", INDEX_METADATA: "读取照片信息",
-    INDEX_CONTENTS: "生成缩略图", INDEX_FACES: "识别人脸",
-  };
+  // taskType -> i18n key; unknown phases fall back to the generic label.
+  const SCAN_PHASES = ["INDEX_FILES", "INDEX_METADATA", "INDEX_CONTENTS", "INDEX_FACES"];
 
   function scanStatus(info) {
-    if (info.status === "error") return "扫描失败";
-    const phase = SCAN_PHASES[info.taskType] || "扫描中";
-    return Number.isFinite(info.done) ? phase + " " + info.done.toLocaleString() + " 张…" : phase + "…";
+    const t = window.I18N.t;
+    if (info.status === "error") return t("sources.scanFailed");
+    const phase = SCAN_PHASES.indexOf(info.taskType) >= 0 ? t("scanPhase." + info.taskType) : t("sources.scanning");
+    return Number.isFinite(info.done) ? t("sources.scanProgress", { phase, n: info.done.toLocaleString() }) : phase + "…";
   }
 
   function countText(source) {
+    const t = window.I18N.t;
     const busy = window.Sources.busy(source.id);
     if (busy) return scanStatus(busy);
     const count = counts[source.id];
-    return count === undefined ? "正在读取…" : count === -1 ? "连接失败" : count.toLocaleString() + " 张";
+    return count === undefined ? t("sources.reading") : count === -1 ? t("sources.connectFailed") : t("sources.countPhotos", { n: count.toLocaleString() });
   }
 
   function mosaic(source) {
@@ -90,7 +90,7 @@
       count.className = "source-card-count";
       const play = document.createElement("div");
       play.className = "source-card-play";
-      play.innerHTML = window.Icons.play + " 播放";
+      play.innerHTML = window.Icons.play + " " + window.I18N.t("sources.play");
       scrim.append(name, count, play);
       card.append(scrim);
       row.appendChild(card);
@@ -219,9 +219,9 @@
       const busy = window.Sources.busy(source.id);
       if (key === "left") focusIdx = (focusIdx - 1 + n) % n;
       else if (key === "right") focusIdx = (focusIdx + 1) % n;
-      else if (key === "ok") { if (busy) return window.App.toast("扫描中，请稍候"); enter(source); return; }
-      else if (key === "play" || key === "green") { if (busy) return window.App.toast("扫描中，请稍候"); play(source); return; }
-      else if (key === "red") { if (busy) return window.App.toast("正在扫描中…"); window.Scan.start(source); }
+      else if (key === "ok") { if (busy) return window.App.toast(window.I18N.t("sources.busyWait")); enter(source); return; }
+      else if (key === "play" || key === "green") { if (busy) return window.App.toast(window.I18N.t("sources.busyWait")); play(source); return; }
+      else if (key === "red") { if (busy) return window.App.toast(window.I18N.t("sources.busyScanning")); window.Scan.start(source); }
       else if (key === "blue") return window.SettingsScreen.open();
       else if (key === "back") return window.App.exit();
       else return;

@@ -22,6 +22,7 @@ class MockImage {
 globalThis.Image = MockImage;
 globalThis.window = {};
 
+await import("../js/core/i18n.js");
 await import("../js/core/lru.js");
 await import("../js/core/media.js");
 await import("../js/core/generation.js");

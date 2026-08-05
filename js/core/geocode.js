@@ -44,10 +44,13 @@
       });
       const lookup = (async () => {
         try {
+          // Follow the UI language. Cache entries keep the language they were
+          // fetched in; a mid-session switch only affects new lookups.
+          const language = window.I18N.lang === "zh-CN" ? "zh-Hans" : "en";
           const query =
             "latitude=" + encodeURIComponent(lat) +
             "&longitude=" + encodeURIComponent(lng) +
-            "&localityLanguage=zh-Hans";
+            "&localityLanguage=" + language;
           const response = await fetch(
             "https://api.bigdatacloud.net/data/reverse-geocode-client?" + query
           );

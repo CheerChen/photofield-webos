@@ -10,6 +10,9 @@ export default defineConfig({
   use: {
     baseURL: "http://127.0.0.1:4174",
     viewport: { width: 1920, height: 1080 },
+    // Specs assert zh-CN copy; pin the browser locale so I18N's
+    // navigator.language detection always picks Chinese.
+    locale: "zh-CN",
     launchOptions: {
       args: ["--autoplay-policy=no-user-gesture-required"],
     },

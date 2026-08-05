@@ -29,6 +29,7 @@
   };
 
   async function boot() {
+    window.I18N.apply();
     window.Keys.bind("sources", (e) => window.SourcesScreen.onKey(e));
     window.Keys.bind("collections", (e) => window.CollectionsScreen.onKey(e));
     window.Keys.bind("grid", (e) => window.GridScreen.onKey(e));

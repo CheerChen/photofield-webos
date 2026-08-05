@@ -102,7 +102,7 @@
       const gen = Symbol();
       active.set(source.id, gen);
       window.Sources.setBusy(source.id, { status: "scanning" });
-      window.App.toast("正在扫描 " + source.name + "…");
+      window.App.toast(window.I18N.t("scan.starting", { name: source.name }));
       try {
         const client = window.Sources.client(source);
         const cols = await client.collections();
@@ -143,7 +143,7 @@
         client.reset();
         window.Sources.clearBusy(source.id);
         active.delete(source.id);
-        window.App.toast(source.name + " 扫描完成");
+        window.App.toast(window.I18N.t("scan.done", { name: source.name }));
         if (window.Keys.current() === "sources") window.SourcesScreen.refresh();
       } catch (e) {
         if (active.get(source.id) === gen) {
@@ -151,7 +151,7 @@
           window.Sources.setBusy(source.id, { status: "error" });
         }
         window.App.toast(
-          "扫描失败：" + (e.message || source.name),
+          window.I18N.t("scan.failed", { msg: e.message || source.name }),
           6000,
           "error"
         );

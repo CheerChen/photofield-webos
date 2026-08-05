@@ -70,6 +70,7 @@ globalThis.document = {
   createElement: (tag) => new Element(tag),
 };
 globalThis.window = {};
+await import("../js/core/i18n.js");
 await import("../js/core/media.js");
 await import("../js/core/generation.js");
 await import("../js/core/image-loader.js");

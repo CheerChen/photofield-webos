@@ -59,15 +59,16 @@
     if (!iso) return "";
     const d = new Date(iso);
     if (isNaN(d)) return iso.slice(0, 10);
-    return d.getFullYear() + "年" + (d.getMonth() + 1) + "月" + d.getDate() + "日";
+    return d.toLocaleDateString(window.I18N.t("html.lang"), { year: "numeric", month: "long", day: "numeric" });
   }
 
   function updateClock() {
     const now = new Date();
     const time = $("kiosk-clock-time");
     const date = $("kiosk-clock-date");
-    if (time) time.textContent = now.toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit", hour12: false });
-    if (date) date.textContent = now.toLocaleDateString("zh-CN", { weekday: "long", month: "long", day: "numeric" });
+    const locale = window.I18N.t("html.lang");
+    if (time) time.textContent = now.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit", hour12: false });
+    if (date) date.textContent = now.toLocaleDateString(locale, { weekday: "long", month: "long", day: "numeric" });
   }
 
   function showInformation(temporary) {
@@ -570,11 +571,11 @@
     if (state.stale) return;
     if (state.error) {
       clearMusicIndicator();
-      return window.App.toast("音乐播放失败");
+      return window.App.toast(window.I18N.t("kiosk.musicFailed"));
     }
     if (!state.playing) {
       clearMusicIndicator();
-      return window.App.toast(state.track.name + " · 已关闭");
+      return window.App.toast(window.I18N.t("kiosk.musicOff", { name: state.track.name }));
     }
     applyMusicState(state, true);
   }
@@ -586,7 +587,7 @@
     if (state.stale) return;
     if (state.error) {
       clearMusicIndicator();
-      return window.App.toast("音乐播放失败");
+      return window.App.toast(window.I18N.t("kiosk.musicFailed"));
     }
     if (!state.playing) return;
     applyMusicState(state, true);
@@ -598,12 +599,12 @@
       if (!openToken.isCurrent() || player !== nextPlayer || !state || state.stale) return;
       if (state.error) {
         clearMusicIndicator();
-        window.App.toast("音乐播放失败");
+        window.App.toast(window.I18N.t("kiosk.musicFailed"));
       }
     }).catch(() => {
       if (!openToken.isCurrent() || player !== nextPlayer) return;
       clearMusicIndicator();
-      window.App.toast("音乐播放失败");
+      window.App.toast(window.I18N.t("kiosk.musicFailed"));
     });
   }
 
@@ -703,7 +704,7 @@
         window.Music.stop();
         clearMusicIndicator();
         window.WebOSPlatform.allowScreenSaver();
-        window.App.toast("无法连接 " + source.name, 6000, "error");
+        window.App.toast(window.I18N.t("app.cannotConnect", { name: source.name }), 6000, "error");
         window.App.back();
         return;
       }
@@ -738,10 +739,10 @@
             clearMusicIndicator();
             player = null;
             window.WebOSPlatform.allowScreenSaver();
-            window.App.toast(e.message || "已停止播放", 6000, "error");
+            window.App.toast(e.message || window.I18N.t("kiosk.stopped"), 6000, "error");
             window.App.back();
           } else {
-            window.App.toast("服务器错误，正在重试…");
+            window.App.toast(window.I18N.t("kiosk.serverRetry"));
           }
         },
       });
@@ -759,7 +760,7 @@
         if (videoSession) endVideoSession(videoSession, false);
         player = null;
         window.WebOSPlatform.allowScreenSaver();
-        window.App.toast("播放失败：" + e.message, 6000, "error");
+        window.App.toast(window.I18N.t("kiosk.playFailed", { msg: e.message }), 6000, "error");
         window.App.back();
       });
     },

@@ -37,7 +37,7 @@
           Object.assign({ rememberCollection: null }, opts)
         );
       } catch (e) {
-        window.App.toast("无法连接 " + source.name);
+        window.App.toast(window.I18N.t("app.cannotConnect", { name: source.name }));
       }
     },
 
@@ -61,7 +61,7 @@
         });
       } catch (e) {
         if (opts.onError) opts.onError(e);
-        else window.App.toast("无法连接 " + source.name);
+        else window.App.toast(window.I18N.t("app.cannotConnect", { name: source.name }));
       }
     },
   };

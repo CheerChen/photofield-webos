@@ -38,6 +38,7 @@ js/clients/photofield.js
 js/clients/source.js
 js/core/generation.js
 js/core/geocode.js
+js/core/i18n.js
 js/core/image-loader.js
 js/core/keys.js
 js/core/lru.js

@@ -1,37 +1,40 @@
 /* Settings overlay: startup behavior, kiosk interval, PIN management. */
 (function () {
   const $ = (id) => document.getElementById(id);
+  const t = (key, vars) => window.I18N.t(key, vars);
   const DURATIONS = [5, 8, 12, 20, 30];
+  // Option labels are i18n keys, resolved at render time so the open
+  // settings panel follows a language switch without special-casing.
   const STARTUPS = [
-    { id: "sources", label: "源选择页" },
-    { id: "kiosk", label: "直接播放上次源" },
+    { id: "sources", label: "startup.sources" },
+    { id: "kiosk", label: "startup.kiosk" },
   ];
   const FIT_MODES = [
-    { id: "ambient", label: "氛围填充" },
-    { id: "contain", label: "完整显示" },
-    { id: "cover", label: "裁切填满" },
+    { id: "ambient", label: "fit.ambient" },
+    { id: "contain", label: "fit.contain" },
+    { id: "cover", label: "fit.cover" },
   ];
   const PLAY_ORDERS = [
-    { id: "shuffle", label: "随机播放" },
-    { id: "sequential", label: "顺序播放" },
+    { id: "shuffle", label: "order.shuffle" },
+    { id: "sequential", label: "order.sequential" },
   ];
   const LOFI_AUTOPLAY = [
-    { id: true, label: "开启" },
-    { id: false, label: "关闭" },
+    { id: true, label: "common.on" },
+    { id: false, label: "common.off" },
   ];
   const INFO_DISPLAYS = [
-    { id: "all", label: "全部显示" },
-    { id: "details", label: "仅详情" },
-    { id: "clock", label: "仅时钟" },
-    { id: "hidden", label: "全部隐藏" },
+    { id: "all", label: "info.all" },
+    { id: "details", label: "info.details" },
+    { id: "clock", label: "info.clock" },
+    { id: "hidden", label: "info.hidden" },
   ];
   const ALBUM_SORTS = [
-    { id: "nameAsc", label: "按文件名升序" },
-    { id: "nameDesc", label: "按文件名降序" },
+    { id: "nameAsc", label: "sort.nameAsc" },
+    { id: "nameDesc", label: "sort.nameDesc" },
   ];
   const MEDIA_SCOPES = [
-    { id: "photos", label: "仅图片" },
-    { id: "all", label: "图片和视频" },
+    { id: "photos", label: "scope.photos" },
+    { id: "all", label: "scope.all" },
   ];
   let focusIdx = 0;
 
@@ -41,20 +44,22 @@
 
   function rows() {
     return [
-      { group: "播放" },
-      { key: "duration", label: "播放间隔", value: window.Store.get("duration") + " 秒", type: "cycler", hint: "每张照片在屏幕上停留的时间" },
-      { key: "playOrder", label: "播放顺序", value: current(PLAY_ORDERS, "playOrder").label, type: "cycler", hint: "随机播放或按相册中的顺序播放" },
-      { key: "fitMode", label: "相片填充", value: current(FIT_MODES, "fitMode").label, type: "cycler", hint: "氛围填充会模糊放大背景，保留照片完整居中" },
-      { key: "startup", label: "启动行为", value: current(STARTUPS, "startup").label, type: "cycler", hint: "开机后直接恢复上次播放的源" },
-      { key: "infoDisplay", label: "信息显示", value: current(INFO_DISPLAYS, "infoDisplay").label, type: "cycler", hint: "播放时默认显示的信息；按方向键可临时唤出完整信息" },
-      { group: "相册" },
-      { key: "albumSort", label: "相册排序", value: current(ALBUM_SORTS, "albumSort").label, type: "cycler", hint: "相册列表与整源顺序播放的排列顺序" },
-      { key: "mediaScope", label: "相册可见范围", value: current(MEDIA_SCOPES, "mediaScope").label, type: "cycler", hint: "仅图片时，相册内翻页与幻灯片播放会跳过视频" },
-      { group: "音乐" },
-      { key: "autoLofi", label: "自动播放 Lofi", value: current(LOFI_AUTOPLAY, "autoLofi").label, type: "cycler", hint: "进入幻灯片时随机开始一组 Lofi 音乐" },
-      { group: "服务器" },
-      { key: "host", label: "服务器地址", value: window.Store.get("photofield.host") || "192.168.0.110", type: "navigate", hint: "修改 Photofield 服务所在设备的地址" },
-      { key: "rescan", label: "重新扫描实例", value: "", type: "action", hint: "重新查找此地址上可用的 Photofield 实例" },
+      { group: t("settings.group.playback") },
+      { key: "duration", label: t("settings.duration"), value: t("settings.seconds", { n: window.Store.get("duration") }), type: "cycler", hint: t("settings.duration.hint") },
+      { key: "playOrder", label: t("settings.playOrder"), value: t(current(PLAY_ORDERS, "playOrder").label), type: "cycler", hint: t("settings.playOrder.hint") },
+      { key: "fitMode", label: t("settings.fitMode"), value: t(current(FIT_MODES, "fitMode").label), type: "cycler", hint: t("settings.fitMode.hint") },
+      { key: "startup", label: t("settings.startup"), value: t(current(STARTUPS, "startup").label), type: "cycler", hint: t("settings.startup.hint") },
+      { key: "infoDisplay", label: t("settings.infoDisplay"), value: t(current(INFO_DISPLAYS, "infoDisplay").label), type: "cycler", hint: t("settings.infoDisplay.hint") },
+      { group: t("settings.group.album") },
+      { key: "albumSort", label: t("settings.albumSort"), value: t(current(ALBUM_SORTS, "albumSort").label), type: "cycler", hint: t("settings.albumSort.hint") },
+      { key: "mediaScope", label: t("settings.mediaScope"), value: t(current(MEDIA_SCOPES, "mediaScope").label), type: "cycler", hint: t("settings.mediaScope.hint") },
+      { group: t("settings.group.music") },
+      { key: "autoLofi", label: t("settings.autoLofi"), value: t(current(LOFI_AUTOPLAY, "autoLofi").label), type: "cycler", hint: t("settings.autoLofi.hint") },
+      { group: t("settings.group.server") },
+      { key: "host", label: t("settings.host"), value: window.Store.get("photofield.host") || "192.168.0.110", type: "navigate", hint: t("settings.host.hint") },
+      { key: "rescan", label: t("settings.rescan"), value: "", type: "action", hint: t("settings.rescan.hint") },
+      { group: t("settings.group.general") },
+      { key: "language", label: t("settings.language"), value: t("lang.self"), type: "cycler", hint: t("settings.language.hint") },
       // PIN row hidden: no source is currently locked. Re-add when a locked
       // source comes back (see js/clients/source.js "locked").
     ];
@@ -82,7 +87,7 @@
       row.innerHTML = "<span>" + r.label + '</span><span class="value">' + (r.type === "cycler" ? "‹ " : "") + r.value + (r.type === "cycler" ? " ›" : r.type === "navigate" ? " ›" : "") + "</span>";
       list.appendChild(row);
     });
-    $("settings-hint").textContent = selectable[focusIdx].hint + " · ←→ 调整 · 返回关闭";
+    $("settings-hint").textContent = selectable[focusIdx].hint + t("settings.hintSuffix");
   }
 
   function cycle(key, options, dir) {
@@ -109,6 +114,8 @@
       cycle("albumSort", ALBUM_SORTS, dir);
     } else if (row.key === "mediaScope") {
       cycle("mediaScope", MEDIA_SCOPES, dir);
+    } else if (row.key === "language") {
+      window.I18N.cycleLang();
     } else if (row.key === "host") {
       // Host editing is handled by OK (opens the full IP input overlay);
       // left/right do nothing here. The old +-1 last-octet cycle made
@@ -137,9 +144,9 @@
       else if (key === "ok") {
         const row = selectable[focusIdx];
         if (row.key === "rescan") {
-          window.App.toast("扫描中…");
+          window.App.toast(t("settings.scanning"));
           window.Sources.discover().then(() => {
-            window.App.toast("扫描完成");
+            window.App.toast(t("settings.scanDone"));
             if (window.Keys.current() === "sources") window.SourcesScreen.refresh();
           });
           return;
@@ -150,7 +157,7 @@
             onConfirm: (host) => {
               window.Store.set("photofield.host", host);
               render();
-              window.App.toast("地址已更新，重新扫描生效");
+              window.App.toast(t("settings.hostUpdated"));
             },
           });
           return;

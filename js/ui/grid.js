@@ -186,7 +186,7 @@
         $("grid-canvas").style.height = height + "px";
       } catch (e) {
         if (!token.isCurrent()) return;
-        window.App.toast("加载失败：" + e.message);
+        window.App.toast(window.I18N.t("app.loadFailedMsg", { msg: e.message }));
         return window.Navigation.pop();
       }
       await ensureSlices(token);

@@ -55,7 +55,7 @@
     if (state.mode === "create") {
       state.mode = "confirm";
       state.first = pin;
-      $("pin-title").textContent = "再次输入以确认";
+      $("pin-title").textContent = window.I18N.t("pin.confirmAgain");
       return render();
     }
     if (state.mode === "confirm") {
@@ -63,12 +63,12 @@
         window.Store.setPin(pin);
         const cb = state.onPass;
         close();
-        window.App.toast("PIN 已设置");
+        window.App.toast(window.I18N.t("pin.set"));
         cb && cb();
       } else {
         state.mode = "create";
         state.first = null;
-        $("pin-title").textContent = "两次输入不一致，重新设置";
+        $("pin-title").textContent = window.I18N.t("pin.mismatch");
         render();
       }
       return;
@@ -80,7 +80,7 @@
       close();
       cb && cb();
     } else {
-      $("pin-title").textContent = "PIN 错误";
+      $("pin-title").textContent = window.I18N.t("pin.wrong");
       render();
     }
   }
@@ -94,10 +94,10 @@
       if (!window.Store.hasPin()) {
         // No PIN configured yet: entering a locked source creates one.
         state = { mode: "create", sourceId: source.id, first: null, onPass };
-        $("pin-title").textContent = "为「" + source.name + "」设置 4 位 PIN";
+        $("pin-title").textContent = window.I18N.t("pin.createFor", { name: source.name });
       } else {
         state = { mode: "verify", sourceId: source.id, onPass };
-        $("pin-title").textContent = "输入 PIN 进入「" + source.name + "」";
+        $("pin-title").textContent = window.I18N.t("pin.enterFor", { name: source.name });
       }
       entered = "";
       focusIdx = 0;
@@ -110,7 +110,7 @@
       state = { mode: "create", sourceId: null, first: null, onPass: onDone };
       entered = "";
       focusIdx = 0;
-      $("pin-title").textContent = window.Store.hasPin() ? "修改 PIN：输入新 PIN" : "设置 4 位 PIN";
+      $("pin-title").textContent = window.I18N.t(window.Store.hasPin() ? "pin.change" : "pin.create");
       window.Navigation.push("pin");
       render();
     },

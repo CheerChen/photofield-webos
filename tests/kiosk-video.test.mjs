@@ -115,6 +115,7 @@ function autoSetup() {
 }
 
 globalThis.window = {};
+await import("../js/core/i18n.js");
 await import("../js/core/media.js");
 await import("../js/core/generation.js");
 await import("../js/core/image-loader.js");

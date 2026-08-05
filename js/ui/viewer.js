@@ -110,7 +110,7 @@
       window.Media.releaseVideo(video);
       stage.innerHTML = "";
       stage.appendChild(poster.image);
-      window.App.toast("视频无法播放，显示海报");
+      window.App.toast(window.I18N.t("viewer.videoPoster"));
     }
 
     function start() {
@@ -161,7 +161,7 @@
       if (photo.isVideo) await showVideo(photo, token, at);
       else await showImage(photo, token, at);
     } catch (e) {
-      if (current(token, at)) window.App.toast("加载失败");
+      if (current(token, at)) window.App.toast(window.I18N.t("app.loadFailed"));
     } finally {
       if (token.isCurrent()) pendingRequest = null;
       if (!token.isCurrent()) return;
@@ -198,7 +198,7 @@
         count = loadedCount;
       } catch (e) {
         if (!token.isCurrent()) return;
-        window.App.toast("加载失败");
+        window.App.toast(window.I18N.t("app.loadFailed"));
         invalidate();
         window.Navigation.pop();
         return;

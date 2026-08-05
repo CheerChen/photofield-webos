@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 
 globalThis.window = {};
+await import("../js/core/i18n.js");
+// The lookup language follows the UI language; pin it so the URL assertion
+// below is independent of the host's locale.
+window.I18N.setLang("zh-CN");
 await import("../js/core/lru.js");
 
 const realFetch = globalThis.fetch;

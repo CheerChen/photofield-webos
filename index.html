@@ -11,16 +11,16 @@
     <section class="screen" id="screen-sources" hidden>
       <header class="topbar">
         <h1 class="topbar-title">Photofield</h1>
-        <span class="topbar-sub">选择源</span>
+        <span class="topbar-sub" data-i18n="sources.sub">选择源</span>
       </header>
       <div class="source-atmosphere" id="source-atmosphere"><canvas id="source-atmosphere-canvas" width="192" height="108"></canvas></div>
       <div class="source-viewport"><div class="source-row" id="source-row"></div></div>
-      <div class="source-empty" id="source-empty" hidden>未找到服务器<br /><span class="source-empty-hint">按蓝键检查地址并重扫</span></div>
+      <div class="source-empty" id="source-empty" hidden><span data-i18n="sources.empty">未找到服务器</span><br /><span class="source-empty-hint" data-i18n="sources.emptyHint">按蓝键检查地址并重扫</span></div>
       <footer class="hintbar">
-        <span><b>OK</b> 浏览</span>
-        <span><b><svg class="icon" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></b> 播放整源</span>
-        <span><b>红键</b> 扫描此源</span>
-        <span><b>蓝键</b> 设置</span>
+        <span><b>OK</b> <span data-i18n="hint.browse">浏览</span></span>
+        <span><b><svg class="icon" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></b> <span data-i18n="hint.playSource">播放整源</span></span>
+        <span><b data-i18n="key.red">红键</b> <span data-i18n="hint.scanSource">扫描此源</span></span>
+        <span><b data-i18n="key.blue">蓝键</b> <span data-i18n="hint.settings">设置</span></span>
       </footer>
     </section>
 
@@ -28,13 +28,13 @@
     <section class="screen" id="screen-collections" hidden>
       <header class="topbar">
         <h1 class="topbar-title" id="collections-source-name"></h1>
-        <span class="topbar-sub">选择相册</span>
+        <span class="topbar-sub" data-i18n="collections.sub">选择相册</span>
       </header>
       <div class="collection-list" id="collection-list"></div>
       <footer class="hintbar">
-        <span><b>OK</b> 浏览</span>
-        <span><b><svg class="icon" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></b> 播放此相册</span>
-        <span><b>返回</b> 源选择</span>
+        <span><b>OK</b> <span data-i18n="hint.browse">浏览</span></span>
+        <span><b><svg class="icon" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></b> <span data-i18n="hint.playAlbum">播放此相册</span></span>
+        <span><b data-i18n="key.back">返回</b> <span data-i18n="hint.backSources">源选择</span></span>
       </footer>
     </section>
 
@@ -45,9 +45,9 @@
       </div>
       <div class="grid-status" id="grid-status"></div>
       <footer class="hintbar">
-        <span><b>OK</b> 查看</span>
-        <span><b><svg class="icon" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></b> 从此播放</span>
-        <span><b>返回</b> 相册列表</span>
+        <span><b>OK</b> <span data-i18n="hint.view">查看</span></span>
+        <span><b><svg class="icon" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></b> <span data-i18n="hint.playFromHere">从此播放</span></span>
+        <span><b data-i18n="key.back">返回</b> <span data-i18n="hint.backAlbums">相册列表</span></span>
       </footer>
     </section>
 
@@ -56,9 +56,9 @@
       <div class="viewer-stage" id="viewer-stage"></div>
       <div class="viewer-meta" id="viewer-meta"></div>
       <footer class="hintbar">
-        <span><b>←→</b> 切换</span>
-        <span><b><svg class="icon" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></b> 从此播放</span>
-        <span><b>返回</b> 关闭</span>
+        <span><b>←→</b> <span data-i18n="hint.switch">切换</span></span>
+        <span><b><svg class="icon" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></b> <span data-i18n="hint.playFromHere">从此播放</span></span>
+        <span><b data-i18n="key.back">返回</b> <span data-i18n="hint.close">关闭</span></span>
       </footer>
     </section>
 
@@ -80,38 +80,38 @@
         <div class="kiosk-location" id="kiosk-location"></div>
       </div>
       <div class="kiosk-clock" id="kiosk-clock"><div id="kiosk-clock-time"></div><div id="kiosk-clock-date"></div></div>
-      <div class="kiosk-loading" id="kiosk-loading" hidden>加载中…</div>
-      <div class="kiosk-hint" id="kiosk-hint" hidden>彩色键选 Lofi 列表 · 上下键切歌 · 播完随机换色 · 再按同色键关闭</div>
+      <div class="kiosk-loading" id="kiosk-loading" data-i18n="kiosk.loading" hidden>加载中…</div>
+      <div class="kiosk-hint" id="kiosk-hint" data-i18n="kiosk.hint" hidden>彩色键选 Lofi 列表 · 上下键切歌 · 播完随机换色 · 再按同色键关闭</div>
       <div class="kiosk-music" id="kiosk-music" hidden><span class="kiosk-equalizer" id="kiosk-equalizer"><i></i><i></i><i></i></span><span id="kiosk-music-name"></span></div>
-      <div class="kiosk-paused" id="kiosk-paused" hidden><svg class="icon" viewBox="0 0 24 24"><path d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg> 已暂停</div>
+      <div class="kiosk-paused" id="kiosk-paused" hidden><svg class="icon" viewBox="0 0 24 24"><path d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg> <span data-i18n="kiosk.paused">已暂停</span></div>
     </section>
 
     <!-- PIN overlay -->
     <div class="modal" id="pin-overlay" hidden>
       <div class="modal-card">
-        <h2 class="modal-title" id="pin-title">输入 PIN</h2>
+        <h2 class="modal-title" id="pin-title" data-i18n="pin.title">输入 PIN</h2>
         <div class="pin-display" id="pin-display">
           <span class="pin-dot"></span><span class="pin-dot"></span>
           <span class="pin-dot"></span><span class="pin-dot"></span>
         </div>
         <div class="pin-pad" id="pin-pad"></div>
-        <p class="modal-hint">方向键移动 · OK 输入 · 红键删除 · 返回取消</p>
+        <p class="modal-hint" data-i18n="pin.hint">方向键移动 · OK 输入 · 红键删除 · 返回取消</p>
       </div>
     </div>
 
     <!-- Settings overlay -->
     <div class="modal" id="settings-overlay" hidden>
       <div class="modal-card">
-        <h2 class="modal-title">设置</h2>
+        <h2 class="modal-title" data-i18n="settings.title">设置</h2>
         <div class="settings-list" id="settings-list"></div>
-        <p class="modal-hint" id="settings-hint">←→ 调整 · OK 选择 · 返回关闭</p>
+        <p class="modal-hint" id="settings-hint" data-i18n="settings.hintDefault">←→ 调整 · OK 选择 · 返回关闭</p>
       </div>
     </div>
 
     <!-- IP input overlay (reuses the pin-pad digit grid) -->
     <div class="modal" id="ipinput-overlay" hidden>
       <div class="modal-card">
-        <h2 class="modal-title">服务器地址</h2>
+        <h2 class="modal-title" data-i18n="ipinput.title">服务器地址</h2>
         <div class="ipinput-display" id="ipinput-display">
           <span class="ipinput-seg"></span><span class="ipinput-dot">.</span>
           <span class="ipinput-seg"></span><span class="ipinput-dot">.</span>
@@ -119,7 +119,7 @@
           <span class="ipinput-seg"></span>
         </div>
         <div class="pin-pad" id="ipinput-pad"></div>
-        <p class="modal-hint">OK 输入数字 · 绿键下一段 · 红键删除 · 返回取消</p>
+        <p class="modal-hint" data-i18n="ipinput.hint">OK 输入数字 · 绿键下一段 · 红键删除 · 返回取消</p>
       </div>
     </div>
 

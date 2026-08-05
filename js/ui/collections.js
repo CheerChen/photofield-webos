@@ -84,7 +84,7 @@
         if (!token.isCurrent()) return;
         errors++;
         if (errors === 1) {
-          window.App.toast("服务器错误，封面加载失败");
+          window.App.toast(window.I18N.t("collections.coverFailed"));
         }
       }
       await new Promise((r) => setTimeout(r, 250));
@@ -116,12 +116,12 @@
         collections = loaded;
       } catch (e) {
         if (!token.isCurrent()) return;
-        window.App.toast("无法连接 " + src.name);
+        window.App.toast(window.I18N.t("app.cannotConnect", { name: src.name }));
         return window.Navigation.pop();
       }
       if (!token.isCurrent()) return;
       if (!collections.length) {
-        window.App.toast(src.name + " 还在索引中，稍后再试");
+        window.App.toast(window.I18N.t("collections.indexing", { name: src.name }));
         return window.Navigation.pop();
       }
       focusIdx = 0;

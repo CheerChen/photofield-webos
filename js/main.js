@@ -1,4 +1,5 @@
 import "./core/store.js";
+import "./core/i18n.js";
 import "./core/keys.js";
 import "./core/navigation.js";
 import "./core/lru.js";
