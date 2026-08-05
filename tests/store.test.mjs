@@ -12,7 +12,6 @@ await import("../js/core/store.js");
 const Store = globalThis.window.Store;
 
 assert.equal(Store.get("duration"), 12);
-assert.equal(Store.get("startup"), "sources");
 assert.equal(Store.get("fitMode"), "ambient");
 assert.equal(Store.get("playOrder"), "shuffle");
 assert.equal(Store.get("autoLofi"), true);

@@ -46,18 +46,6 @@
     window.SourcesScreen.open();
     await window.Sources.discover();
     if (window.Keys.current() === "sources") window.SourcesScreen.refresh();
-
-    // Cold-start straight into the kiosk when configured and possible.
-    if (window.Store.get("startup") === "kiosk" && window.Store.get("lastSource")) {
-      const source = window.Sources.byId(window.Store.get("lastSource"));
-      if (source) {
-        window.Playback.resume(source, {
-          onError: () => window.SourcesScreen.open(),
-        });
-        return;
-      }
-    }
-    window.SourcesScreen.open();
   }
 
   document.addEventListener("DOMContentLoaded", boot);

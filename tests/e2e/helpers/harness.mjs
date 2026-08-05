@@ -43,7 +43,6 @@ export async function bootToSources(page) {
   }, {
     sources: [{ id: SOURCE_ID, name: "Photos", baseUrl: SOURCE_BASE, locked: false }],
     settings: {
-      startup: "sources",
       duration: 1,
       fitMode: "contain",
       playOrder: "sequential",

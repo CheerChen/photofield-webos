@@ -4,7 +4,6 @@
   const KEY = "photofield.settings.v1";
 
   const DEFAULTS = {
-    startup: "sources", // "sources" | "kiosk" (resume last source)
     duration: 12, // kiosk seconds per photo
     fitMode: "ambient", // "ambient" | "contain" | "cover"
     playOrder: "shuffle", // "shuffle" | "sequential"

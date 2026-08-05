@@ -1,14 +1,10 @@
-/* Settings overlay: startup behavior, kiosk interval, PIN management. */
+/* Settings overlay: kiosk interval, playback options, PIN management. */
 (function () {
   const $ = (id) => document.getElementById(id);
   const t = (key, vars) => window.I18N.t(key, vars);
   const DURATIONS = [5, 8, 12, 20, 30];
   // Option labels are i18n keys, resolved at render time so the open
   // settings panel follows a language switch without special-casing.
-  const STARTUPS = [
-    { id: "sources", label: "startup.sources" },
-    { id: "kiosk", label: "startup.kiosk" },
-  ];
   const FIT_MODES = [
     { id: "ambient", label: "fit.ambient" },
     { id: "contain", label: "fit.contain" },
@@ -48,13 +44,12 @@
       { key: "duration", label: t("settings.duration"), value: t("settings.seconds", { n: window.Store.get("duration") }), type: "cycler", hint: t("settings.duration.hint") },
       { key: "playOrder", label: t("settings.playOrder"), value: t(current(PLAY_ORDERS, "playOrder").label), type: "cycler", hint: t("settings.playOrder.hint") },
       { key: "fitMode", label: t("settings.fitMode"), value: t(current(FIT_MODES, "fitMode").label), type: "cycler", hint: t("settings.fitMode.hint") },
-      { key: "startup", label: t("settings.startup"), value: t(current(STARTUPS, "startup").label), type: "cycler", hint: t("settings.startup.hint") },
       { key: "infoDisplay", label: t("settings.infoDisplay"), value: t(current(INFO_DISPLAYS, "infoDisplay").label), type: "cycler", hint: t("settings.infoDisplay.hint") },
+      { group: t("settings.group.music") },
+      { key: "autoLofi", label: t("settings.autoLofi"), value: t(current(LOFI_AUTOPLAY, "autoLofi").label), type: "cycler", hint: t("settings.autoLofi.hint") },
       { group: t("settings.group.album") },
       { key: "albumSort", label: t("settings.albumSort"), value: t(current(ALBUM_SORTS, "albumSort").label), type: "cycler", hint: t("settings.albumSort.hint") },
       { key: "mediaScope", label: t("settings.mediaScope"), value: t(current(MEDIA_SCOPES, "mediaScope").label), type: "cycler", hint: t("settings.mediaScope.hint") },
-      { group: t("settings.group.music") },
-      { key: "autoLofi", label: t("settings.autoLofi"), value: t(current(LOFI_AUTOPLAY, "autoLofi").label), type: "cycler", hint: t("settings.autoLofi.hint") },
       { group: t("settings.group.server") },
       { key: "host", label: t("settings.host"), value: window.Store.get("photofield.host") || "192.168.0.110", type: "navigate", hint: t("settings.host.hint") },
       { key: "rescan", label: t("settings.rescan"), value: "", type: "action", hint: t("settings.rescan.hint") },
@@ -97,9 +92,7 @@
 
   function adjust(dir) {
     const row = rows().filter((r) => r.key)[focusIdx];
-    if (row.key === "startup") {
-      cycle("startup", STARTUPS, dir);
-    } else if (row.key === "duration") {
+    if (row.key === "duration") {
       const cur = Math.max(0, DURATIONS.indexOf(window.Store.get("duration")));
       window.Store.set("duration", DURATIONS[(cur + dir + DURATIONS.length) % DURATIONS.length]);
     } else if (row.key === "fitMode") {
