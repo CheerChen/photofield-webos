@@ -129,7 +129,7 @@ npm ci
 | 层级 | 选型 |
 | --- | --- |
 | 运行时 | webOS Web App (WAM / Chromium) |
-| 语言 | 原生 JavaScript；esbuild 打包，无运行时第三方依赖 |
+| 语言 | 原生 JavaScript（浏览器原生 ESM），无运行时第三方依赖 |
 | UI | 遥控器焦点导航 + 栈式页面路由 |
 | 图片加载 | 变体候选链回退 + 解码尺寸预算 |
 | 播放 | 原生 `<video>` 硬件解码 |
@@ -145,10 +145,7 @@ npm ci
 # 安装开发依赖
 npm ci
 
-# 构建 dist/app.js
-npm run build
-
-# 构建检查 + ESLint + 单元测试
+# ESLint + 单元测试
 npm run check
 
 # Playwright E2E 测试

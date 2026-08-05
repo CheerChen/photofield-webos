@@ -5,15 +5,13 @@
   "license": "MIT",
   "type": "module",
   "scripts": {
-    "build": "esbuild js/main.js --bundle --format=iife --platform=browser --target=chrome53 --minify --outfile=dist/app.js",
-    "check": "npm run build && npm run lint && npm test",
-    "test:e2e": "npm run build && playwright test -c tests/e2e/playwright.config.mjs",
+    "check": "npm run lint && npm test",
+    "test:e2e": "playwright test -c tests/e2e/playwright.config.mjs",
     "lint": "eslint js scripts tests tvkit/js tvkit/tests",
     "test": "node scripts/check.mjs"
   },
   "devDependencies": {
     "@playwright/test": "^1.62.0",
-    "esbuild": "^0.25.12",
     "eslint": "^9.39.5",
     "globals": "^16.5.0"
   }

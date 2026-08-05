@@ -1,6 +1,5 @@
 .DS_Store
 node_modules/
-dist/
 test-results/
 .pi-subagents/
 __pycache__/

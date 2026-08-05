@@ -129,7 +129,7 @@ npm ci
 | Layer | Choice |
 | --- | --- |
 | Runtime | webOS Web App (WAM / Chromium) |
-| Language | Vanilla JavaScript bundled with esbuild; no runtime third-party dependencies |
+| Language | Vanilla JavaScript (native browser ESM); no runtime third-party dependencies |
 | UI | Remote focus navigation + stack-based screen routing |
 | Image loading | Ordered candidate fallback + decoded-size budget |
 | Playback | Native `<video>` hardware decode |
@@ -145,10 +145,7 @@ npm ci
 # install development dependencies
 npm ci
 
-# build dist/app.js
-npm run build
-
-# build verification + ESLint + unit tests
+# ESLint + unit tests
 npm run check
 
 # Playwright end-to-end tests

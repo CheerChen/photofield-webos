@@ -6,12 +6,10 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
-npm --prefix "$ROOT" run build
-
 exec "$ROOT/tvkit/scripts/package-common.sh" \
   --app-id com.cheerchen.photofield \
   --root "$ROOT" \
   --max-kb 102400 \
   --contents scripts/ipk-contents.txt \
   "$@" \
-  -- appinfo.json index.html dist css assets/icons assets/audio assets/splash.png
+  -- appinfo.json index.html js tvkit/js css assets/icons assets/audio assets/splash.png
