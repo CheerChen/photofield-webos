@@ -8,7 +8,7 @@
 
 <p align="center">
   <strong>Native <a href="https://github.com/SmilyOrg/photofield">Photofield</a> client for LG webOS TVs</strong><br />
-  Auto source discovery · collection browsing · kiosk slideshow · video playback · Lofi background music
+  Photofield auto-discovery · collection browsing · slideshow · video playback · Lofi background music
 </p>
 
 <p align="center">
@@ -29,14 +29,9 @@
 
 ---
 
-## Screenshots
-
 | Source selection | Collections | Photo grid |
 | :---: | :---: | :---: |
 | ![Source selection](assets/screenshots/01-sources.webp) | ![Collections](assets/screenshots/02-collections.webp) | ![Photo grid](assets/screenshots/03-grid.webp) |
-
-| Fullscreen viewer | Slideshow | Settings |
-| :---: | :---: | :---: |
 | ![Fullscreen viewer](assets/screenshots/04-viewer.webp) | ![Kiosk slideshow](assets/screenshots/05-kiosk.webp) | ![Settings](assets/screenshots/06-settings.webp) |
 
 ---
@@ -48,7 +43,7 @@ A **purpose-built webOS TV client** for [Photofield](https://github.com/SmilyOrg
 - Talks to a self-hosted Photofield instance: auto-discovers photo sources, browses collections, views photos fullscreen
 - TV UI with remote D-pad focus navigation
 - Kiosk slideshow mode: configurable interval, fit and order
-- Dual-source Lofi background music: bundled CC0 tracks or live radio streams
+- Dual-source Lofi background music: 28 bundled offline tracks or live radio streams
 - Photos and videos both use native system decoding — **no root required**
 
 The client ships empty: **no built-in photo sources**. Photos and videos come from your own Photofield instance.
@@ -61,15 +56,12 @@ See [Releases](https://github.com/CheerChen/photofield-webos/releases) and [CHAN
 
 | Capability | Details |
 | --- | --- |
-| Auto source discovery | Scans the configured server's ports and presents cached instances and scan status as photo-mosaic cards |
+| Auto discovery | Scans the ports of the configured Photofield server |
 | Collection browsing | Four-column cover cards; subdirectories expand into separate collections |
 | Photo grid | Follows the server-side wall layout; start slideshow playback from any photo |
-| Viewer | Fullscreen viewing; keeps showing the latest requested photo while navigating during loads |
-| Video playback | Viewer and slideshow stream the untouched source with sound; falls back to the already-loaded preview when undecodable |
-| Slideshow playback | Configurable interval, fit mode and order; clock, capture details, reverse-geocoded locations and Ken Burns motion; inhibits the screensaver while playing |
-| Lofi background music | Two sources: bundled CC0 tracks, or 13 live radio stations grouped into four colour themes; colour keys switch themes, up/down keys change station; local playlists rotate colours when done, radio streams auto-advance on failure with volume fade in/out; optional autoplay on kiosk entry |
-| Remote navigation | Full D-pad / OK / Back coverage; play, pause, rewind, fast-forward and stop media keys; colour keys switch Lofi playlists |
-| Settings | Interval, fit, order, information display, album sorting, media scope, Lofi autoplay and source, server address and instance rescan |
+| Video playback | Viewer and slideshow stream the untouched source with sound |
+| Slideshow playback | Configurable interval, fit mode and order |
+| Lofi background music | Two sources: 28 bundled offline tracks, or 13 live radio stations grouped into four colour themes; colour keys switch themes, up/down keys change station |
 
 ---
 
