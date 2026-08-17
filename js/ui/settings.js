@@ -18,6 +18,10 @@
     { id: true, label: "common.on" },
     { id: false, label: "common.off" },
   ];
+  const LOFI_SOURCES = [
+    { id: "local", label: "settings.lofiSource.local" },
+    { id: "radio", label: "settings.lofiSource.radio" },
+  ];
   const INFO_DISPLAYS = [
     { id: "all", label: "info.all" },
     { id: "details", label: "info.details" },
@@ -47,6 +51,7 @@
       { key: "infoDisplay", label: t("settings.infoDisplay"), value: t(current(INFO_DISPLAYS, "infoDisplay").label), type: "cycler", hint: t("settings.infoDisplay.hint") },
       { group: t("settings.group.music") },
       { key: "autoLofi", label: t("settings.autoLofi"), value: t(current(LOFI_AUTOPLAY, "autoLofi").label), type: "cycler", hint: t("settings.autoLofi.hint") },
+      { key: "lofiSource", label: t("settings.lofiSource"), value: t(current(LOFI_SOURCES, "lofiSource").label), type: "cycler", hint: t("settings.lofiSource.hint") },
       { group: t("settings.group.album") },
       { key: "albumSort", label: t("settings.albumSort"), value: t(current(ALBUM_SORTS, "albumSort").label), type: "cycler", hint: t("settings.albumSort.hint") },
       { key: "mediaScope", label: t("settings.mediaScope"), value: t(current(MEDIA_SCOPES, "mediaScope").label), type: "cycler", hint: t("settings.mediaScope.hint") },
@@ -101,6 +106,11 @@
       cycle("playOrder", PLAY_ORDERS, dir);
     } else if (row.key === "autoLofi") {
       cycle("autoLofi", LOFI_AUTOPLAY, dir);
+    } else if (row.key === "lofiSource") {
+      cycle("lofiSource", LOFI_SOURCES, dir);
+      // Switching the library stops any playback under the old source; the
+      // kiosk restarts music on its next color key or auto-start.
+      window.Music.setSource(window.Store.get("lofiSource"));
     } else if (row.key === "infoDisplay") {
       cycle("infoDisplay", INFO_DISPLAYS, dir);
     } else if (row.key === "albumSort") {

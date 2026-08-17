@@ -545,13 +545,22 @@
     const equalizer = $("kiosk-equalizer");
     if (equalizer) {
       equalizer.style.color = MUSIC_COLORS_HEX[state.color];
-      equalizer.classList.toggle("paused", !state.playing);
+      equalizer.classList.toggle("paused", !state.playing && !state.loading);
+      // Radio streams connect for a few seconds before audio starts; show a
+      // pulsing "connecting" state instead of a dead equalizer.
+      equalizer.classList.toggle("loading", !!state.loading);
     }
+    const box = $("kiosk-music");
+    box.classList.toggle("loading", !!state.loading);
     $("kiosk-music-name").textContent = state.track.name + " · " + (state.index + 1) + "/" + state.total;
-    $("kiosk-music").classList.remove("fade");
-    $("kiosk-music").hidden = false;
+    box.classList.remove("fade");
+    box.hidden = false;
     clearTimeout(musicTimer);
-    musicTimer = setTimeout(fadeMusicIndicator, state.playing ? 10000 : 4000);
+    // Keep the indicator up for the whole connection: a slow stream must not
+    // fade the indicator out while it is still loading.
+    if (!state.loading) {
+      musicTimer = setTimeout(fadeMusicIndicator, state.playing ? 10000 : 4000);
+    }
   }
 
   function applyMusicState(state, announce) {
@@ -569,10 +578,11 @@
   async function toggleMusic(color) {
     const state = await window.Music.toggle(color);
     if (state.stale) return;
-    if (state.error) {
+    if (state.error && !state.retryScheduled) {
       clearMusicIndicator();
       return window.App.toast(window.I18N.t("kiosk.musicFailed"));
     }
+    if (state.retryScheduled) return;
     if (!state.playing) {
       clearMusicIndicator();
       return window.App.toast(window.I18N.t("kiosk.musicOff", { name: state.track.name }));
@@ -585,10 +595,11 @@
     const state = await (delta > 0 ? window.Music.next() : window.Music.prev());
     if (!state) return;
     if (state.stale) return;
-    if (state.error) {
+    if (state.error && !state.retryScheduled) {
       clearMusicIndicator();
       return window.App.toast(window.I18N.t("kiosk.musicFailed"));
     }
+    if (state.retryScheduled) return;
     if (!state.playing) return;
     applyMusicState(state, true);
   }
@@ -597,7 +608,7 @@
     if (window.Store.get("autoLofi") === false) return;
     window.Music.autoStart().then((state) => {
       if (!openToken.isCurrent() || player !== nextPlayer || !state || state.stale) return;
-      if (state.error) {
+      if (state.error && !state.retryScheduled) {
         clearMusicIndicator();
         window.App.toast(window.I18N.t("kiosk.musicFailed"));
       }

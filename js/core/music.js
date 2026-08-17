@@ -2,9 +2,13 @@
  * select a fresh cycle; finishing a cycle picks another color at random. Up /
  * Down navigate the current cycle. Only one active Audio element is used at a time.
  *
- * Tracks are CC0 1.0 (public domain) from the Open Lo-Fi collection by
- * btahir/open-lofi, bundled locally under assets/audio/. See
- * assets/audio/README.md for provenance. */
+ * Two sources share this engine. "local" plays the bundled CC0 tracks from
+ * the Open Lo-Fi collection by btahir/open-lofi under assets/audio/ (see
+ * assets/audio/README.md). "radio" plays curated live MP3 station streams
+ * (from github.com/88lin/lofi-radio-web): live streams never fire `ended`, so
+ * colors only change on a manual key press, resume rejoins the live edge
+ * instead of seeking, and a failed stream auto-advances to the next station
+ * so the kiosk never falls silent on a single dead station. */
 (function () {
   const DIR = "assets/audio/";
 
@@ -47,7 +51,53 @@
     ],
   };
 
+  /* Live station streams, curated from lofi-radio-web's public radio list.
+   * Same four colors as the local library; color themes follow it: red = dawn
+   * bells & fireside glow, green = misty bamboo morning, yellow = golden
+   * afternoon & city dusk, blue = moonlit deep-night sleep.
+   * Unreachable-at-curation streams (SomaFM, B3ck, Chill Sky), pure
+   * white-noise/ambient-drone stations (Rain Sounds, ASP), and unwanted
+   * stations (Jazz Box) were dropped. */
+  const STATIONS = {
+    red: [
+      { name: "Paradise", src: "https://stream.radioparadise.com/mellow-128" },
+      { name: "Lofi Chilling", src: "https://radio.loficafe.net/listen/chilling/radio.mp3" },
+      { name: "Rap Beats", src: "https://boxradio-edge-00.streamafrica.net/rap" },
+    ],
+    green: [
+      { name: "Lofi Japanese", src: "https://radio.loficafe.net/listen/japanese-lofi/radio.mp3" },
+      { name: "Swiss Classic", src: "https://stream.srg-ssr.ch/m/rsc_de/mp3_128" },
+      { name: "Lofi Box", src: "https://boxradio-edge-00.streamafrica.net/lofi" },
+    ],
+    yellow: [
+      { name: "Jazz Smooth", src: "https://smoothjazz.cdnstream1.com/2585_128.mp3" },
+      { name: "Jazz Groove", src: "https://west-mp3-128.streamthejazzgroove.com/stream" },
+      { name: "Code Radio", src: "https://coderadio-admin-v2.freecodecamp.org/listen/coderadio/radio.mp3" },
+      { name: "Lofi Gaming", src: "https://radio.loficafe.net/listen/gaming/radio.mp3" },
+    ],
+    blue: [
+      { name: "Lofi Sleeping", src: "https://radio.loficafe.net/listen/sleeping/radio.mp3" },
+      { name: "Lofi Studying", src: "https://radio.loficafe.net/listen/studying/radio.mp3" },
+      { name: "Chill Wave", src: "https://boxradio-edge-00.streamafrica.net/chillwave" },
+    ],
+  };
+
   const COLORS = Object.keys(TRACKS);
+
+  // Active source: "local" (bundled CC0 tracks) or "radio" (live streams).
+  // Resolved lazily so script load order with store.js does not matter.
+  let source = null;
+  function resolveSource() {
+    if (!source) {
+      const stored = typeof window.Store !== "undefined" ? window.Store.get("lofiSource") : null;
+      source = stored === "radio" ? "radio" : "local";
+    }
+    return source;
+  }
+  function library() {
+    return resolveSource() === "radio" ? STATIONS : TRACKS;
+  }
+
   const playlists = {};
   const playlistPos = {};
   for (const color of COLORS) {
@@ -58,6 +108,7 @@
   let audio = null;
   let activeColor = null;
   let playing = false;
+  let loading = false; // radio stream is connecting (play() not settled yet)
   let suspended = false;
   let suspendOffset = 0;
   let resumeRetryTimer = null;
@@ -66,14 +117,34 @@
   // because webOS is still tearing down the media pipeline of a just-released
   // video element.
   const RESUME_RETRY_MS = 600;
+  // Delay before auto-advancing to the next radio station after a stream
+  // failure, so a flapping station does not spin the loader hot.
+  const RADIO_RETRY_MS = 1500;
+  // A hung stream (server accepts the connection but never delivers data)
+  // fires neither a play() rejection nor an error event. Give the connection
+  // this long to produce decoded audio (timeupdate/playing), then treat it
+  // as a dead station and advance the pool.
+  const RADIO_CONNECT_MS = 6000;
+  // Volume fade shape for live streams: a live stream starts mid-song, so
+  // fade in to mask the abrupt join; fade out briefly before a manual
+  // station/color switch. Durations in ms; rAF-driven when available.
+  const RADIO_FADE_IN_MS = 1200;
+  const RADIO_FADE_OUT_MS = 300;
+  const TARGET_VOLUME = 0.32;
   const listeners = new Set();
+  // Token of the most recent load that reached play(); used to invalidate a
+  // radio auto-advance scheduled from an element error event.
+  let activeToken = null;
+  let radioFailures = 0;
+  let radioRetryTimer = null;
+  let radioWatchdogTimer = null;
 
   function randomIndex(length) {
     return Math.min(length - 1, Math.floor(Math.random() * length));
   }
 
   function shuffledIndexes(color) {
-    const order = TRACKS[color].map((_, index) => index);
+    const order = library()[color].map((_, index) => index);
     for (let i = order.length - 1; i > 0; i--) {
       const j = randomIndex(i + 1);
       [order[i], order[j]] = [order[j], order[i]];
@@ -89,7 +160,7 @@
   function currentTrack(color, position) {
     const trackIndex = playlists[color][position];
     return {
-      track: TRACKS[color][trackIndex],
+      track: library()[color][trackIndex],
       trackIndex,
     };
   }
@@ -106,8 +177,9 @@
       index: position,
       playlistIndex: position,
       trackIndex: current.trackIndex,
-      total: TRACKS[activeColor].length,
+      total: library()[activeColor].length,
       playing,
+      loading: playing ? false : loading,
     };
   }
 
@@ -132,6 +204,111 @@
     const clear = () => { el._musicPause = false; };
     if (typeof queueMicrotask === "function") queueMicrotask(clear);
     else setTimeout(clear, 0);
+  }
+
+  // A live stream can fail at open or drop mid-play: the station may be
+  // down or the connection timed out. Instead of leaving the kiosk silent,
+  // advance to the next station in the color. Give up only after the whole
+  // pool has failed, which normally means the network itself is gone.
+  // Returns false when no retry is possible (local source or pool exhausted).
+  function scheduleRadioRetry(el, token, color) {
+    if (resolveSource() !== "radio" || !playlists[color]) return false;
+    // The watchdog's job (advance on failure) is taken over by the retry
+    // path, so stand it down.
+    clearRadioWatchdog();
+    // A failed element can report its error both via the error event and via
+    // the rejected play() promise; retry only once per failure.
+    if (el && el._radioRetry) return true;
+    if (el) el._radioRetry = true;
+    if (radioFailures >= library()[color].length) return false;
+    radioFailures += 1;
+    clearRadioRetryTimer();
+    radioRetryTimer = setTimeout(() => {
+      radioRetryTimer = null;
+      if (!token || !token.isCurrent() || activeColor !== color || suspended) return;
+      step(1).catch(() => {});
+    }, RADIO_RETRY_MS);
+    return true;
+  }
+
+  function clearRadioRetryTimer() {
+    if (radioRetryTimer) {
+      clearTimeout(radioRetryTimer);
+      radioRetryTimer = null;
+    }
+  }
+
+  function clearRadioWatchdog() {
+    if (radioWatchdogTimer) {
+      clearTimeout(radioWatchdogTimer);
+      radioWatchdogTimer = null;
+    }
+  }
+
+  /* Connect watchdog for live streams. Fires when a stream produced no
+   * decoded audio within RADIO_CONNECT_MS: demotes the state back to
+   * loading, invalidates the still-pending play() so a late settle cannot
+   * revive the hung element, and advances to the next station via the
+   * standard retry path. */
+  function onRadioConnectTimeout(el, token, color) {
+    if (!token.isCurrent() || activeColor !== color || suspended) return;
+    if (el._radioData) return; // audio arrived after the timer was set
+    playing = false;
+    loading = true;
+    generation.cancel();
+    const retryToken = generation.next();
+    if (!scheduleRadioRetry(el, retryToken, color)) {
+      activeColor = null;
+      playing = false;
+      loading = false;
+      notify(null);
+      return;
+    }
+    notify(snapshot());
+  }
+
+  /* Volume ramp for live streams. Returns a Promise that settles when the
+   * ramp finishes (or is aborted by a superseding load). Falls back to
+   * setting the final volume directly when requestAnimationFrame is
+   * unavailable (node tests, old webviews). The token guard stops the ramp
+   * as soon as its element or load is superseded, so a replaced element is
+   * never ghost-ramped. */
+  function fadeVolume(el, from, to, durationMs, token) {
+    return new Promise((resolve) => {
+      if (durationMs <= 0 || typeof requestAnimationFrame !== "function") {
+        try { el.volume = to; } catch (e) { /* ignore */ }
+        resolve();
+        return;
+      }
+      const start = Date.now();
+      const tick = () => {
+        if (!token || !token.isCurrent() || audio !== el) {
+          resolve();
+          return;
+        }
+        const k = Math.min(1, (Date.now() - start) / durationMs);
+        try { el.volume = from + (to - from) * k; } catch (e) { /* ignore */ }
+        if (k < 1) requestAnimationFrame(tick);
+        else resolve();
+      };
+      requestAnimationFrame(tick);
+    });
+  }
+
+  /* Fade a live stream in when its audio actually starts flowing. On webOS
+   * the play() promise can settle while the stream is still buffering, so
+   * keying the ramp to the first timeupdate/playing event is what makes it
+   * audible; whichever signal fires first wins. */
+  function startFadeIn(el, token) {
+    if (el._fadeStarted) return;
+    el._fadeStarted = true;
+    fadeVolume(el, el.volume, TARGET_VOLUME, RADIO_FADE_IN_MS, token);
+  }
+
+  // Only live streams ramp: local files start at their beginning, and a
+  // suspend/stop must release the media pipeline immediately.
+  function isLive() {
+    return resolveSource() === "radio";
   }
 
   function randomColor(exclude) {
@@ -165,13 +342,19 @@
     const el = new AudioCtor();
     el.loop = false;
     el.preload = "none";
-    el.volume = 0.32;
+    el.volume = TARGET_VOLUME;
     el.addEventListener("ended", () => {
       // A new Audio object is created for every load. Ignore a delayed event
       // from an object that was replaced by a manual track/color switch.
       if (audio !== el) return;
       // Do not leave a rejected async transition as an unhandled promise.
       advanceAfterEnded().catch(() => {});
+    });
+    el.addEventListener("error", () => {
+      if (audio !== el) return;
+      if (resolveSource() !== "radio" || !activeColor || suspended) return;
+      if (el.ended) return;
+      scheduleRadioRetry(el, activeToken, activeColor);
     });
     el.addEventListener("pause", () => {
       if (audio !== el) return;
@@ -220,13 +403,50 @@
     const order = playlists[color];
     const position = playlistPos[color];
     const current = currentTrack(color, position);
+    const live = isLive();
     const token = generation.next();
+    activeToken = token;
+    // Fade the outgoing stream down before the element is replaced so a
+    // manual station/color switch does not cut mid-song at full volume.
+    if (live && audio && playing) {
+      const outgoing = audio;
+      // A genuine await: the outgoing stream ramps down before replacement.
+      await fadeVolume(outgoing, outgoing.volume, 0, RADIO_FADE_OUT_MS, token);
+      if (!token.isCurrent()) return null;
+    }
     const el = replaceAudio();
+    // A live stream joins mid-song: start silent and ramp up once play()
+    // settles, so the join is a fade-in instead of an abrupt jump.
+    if (live) {
+      el.volume = 0;
+      loading = true;
+    }
 
     el.src = current.track.src;
     el.currentTime = 0;
     activeColor = color;
     playing = false;
+    if (live) {
+      // Watchdog: a hung connection must advance the pool on its own, not
+      // wait for an error event that may never come. Either of these events
+      // proves decoded audio is flowing, so the timeout is stood down.
+      el._radioData = false;
+      const onData = () => {
+        el._radioData = true;
+        clearRadioWatchdog();
+        // Audio is flowing now: this is the moment the fade-in becomes
+        // audible, so run it from here when play() settled first.
+        if (playing) startFadeIn(el, token);
+      };
+      el.addEventListener("timeupdate", onData, { once: true });
+      el.addEventListener("playing", onData, { once: true });
+      clearRadioWatchdog();
+      radioWatchdogTimer = setTimeout(() => {
+        radioWatchdogTimer = null;
+        onRadioConnectTimeout(el, token, color);
+      }, RADIO_CONNECT_MS);
+      notify(snapshot());
+    }
 
     try {
       const started = el.play();
@@ -244,6 +464,14 @@
         };
       }
       playing = true;
+      loading = false;
+      radioFailures = 0;
+      if (live) {
+        // If audio is already flowing, fade in now; otherwise onData fires
+        // it at the moment sound actually starts.
+        if (el._radioData) startFadeIn(el, token);
+        else el._fadeStarted = false;
+      }
       const state = snapshot();
       notify(state);
       return state;
@@ -260,13 +488,33 @@
           stale: true,
         };
       }
+      // A radio stream that fails to open still has the rest of its pool to
+      // try; keep the color active and advance after a short delay.
+      playing = false;
+      if (live) loading = true;
+      if (scheduleRadioRetry(el, token, color)) {
+        notify(snapshot());
+        return {
+          color,
+          track: current.track,
+          playing: false,
+          index: position,
+          playlistIndex: position,
+          trackIndex: current.trackIndex,
+          total: order.length,
+          retryScheduled: true,
+          error,
+        };
+      }
       activeColor = null;
       playing = false;
+      loading = false;
       notify(null);
       return {
         color,
         track: current.track,
         playing: false,
+        loading: false,
         index: position,
         playlistIndex: position,
         trackIndex: current.trackIndex,
@@ -277,14 +525,14 @@
   }
 
   function startColor(color) {
-    if (!TRACKS[color]) throw new Error("unknown lofi track");
+    if (!library()[color]) throw new Error("unknown lofi track");
     suspended = false;
     beginPlaylist(color);
     return loadCurrent(color);
   }
 
   async function toggle(color) {
-    if (!TRACKS[color]) throw new Error("unknown lofi track");
+    if (!library()[color]) throw new Error("unknown lofi track");
 
     // activeColor is assigned before play() settles, so a second quick press
     // also toggles off a track that is still opening from disk.
@@ -292,6 +540,10 @@
       const state = snapshot();
       const el = ensureAudio();
       generation.cancel();
+      clearRadioRetryTimer();
+      clearRadioWatchdog();
+      radioFailures = 0;
+      loading = false;
       activeColor = null;
       playing = false;
       suspended = false;
@@ -329,6 +581,8 @@
     // A pending resume retry must never fire into the suspension a new video
     // session just requested, so kill it even when already suspended.
     clearResumeRetry();
+    clearRadioRetryTimer();
+    clearRadioWatchdog();
     if (!activeColor || !audio || suspended) return snapshot();
     suspended = true;
     suspendOffset = audio.currentTime || 0;
@@ -389,7 +643,11 @@
       playing = true;
       suspended = false;
       suspendOffset = 0;
-      if (offset > 0) {
+      loading = false;
+      radioFailures = 0;
+      // Live streams have no meaningful position: resuming a radio station
+      // rejoins the live edge instead of seeking into a stale buffer.
+      if (offset > 0 && resolveSource() !== "radio") {
         // Seek only after play() settles: setting currentTime on a fresh
         // element before its metadata loads is unreliable on webOS Chromium.
         try { el.currentTime = offset; } catch (e) { /* restart from 0 */ }
@@ -441,9 +699,13 @@
 
   function stop() {
     clearResumeRetry();
+    clearRadioRetryTimer();
+    clearRadioWatchdog();
+    radioFailures = 0;
     generation.cancel();
     activeColor = null;
     playing = false;
+    loading = false;
     suspended = false;
     suspendOffset = 0;
     if (audio) {
@@ -453,9 +715,26 @@
     notify(null);
   }
 
+  // Switch the track library ("local" | "radio"). Any playback under the old
+  // source stops; the kiosk restarts music with the new library on its next
+  // color key or auto-start. Persistence is the caller's (settings) job.
+  function setSource(next) {
+    if (next !== "radio" && next !== "local") return resolveSource();
+    if (next === resolveSource()) return next;
+    stop();
+    source = next;
+    for (const color of COLORS) {
+      playlists[color] = null;
+      playlistPos[color] = 0;
+    }
+    return source;
+  }
+
   window.Music = {
-    tracks: () => TRACKS,
+    tracks: () => library(),
     colors: () => COLORS.slice(),
+    source: () => resolveSource(),
+    setSource,
     subscribe(listener) {
       if (typeof listener !== "function") return () => {};
       listeners.add(listener);

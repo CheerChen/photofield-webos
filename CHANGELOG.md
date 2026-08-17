@@ -2,6 +2,31 @@
 
 All notable changes to this project are documented in this file.
 
+## [Unreleased]
+
+### Added
+
+- Add a live radio source for kiosk Lofi music: 13 curated public MP3 station streams grouped into the four colour themes, selectable per colour with the colour keys and stepping with up/down like the bundled tracks.
+- Add a "Lofi source" setting (bundled tracks / live radio) with a per-connection loading state on the floating music indicator (pulsing equalizer and animated ellipsis).
+- Add runtime language switching with a Settings row; all UI strings are extracted into an i18n module (English / Simplified Chinese).
+- Add screenshots to the README.
+
+### Changed
+
+- Radio playback fades volume in when a live stream's audio actually starts flowing and fades out before a manual station or colour switch; local files, suspend, and stop stay immediate.
+- Radio resumes rejoin the live edge instead of seeking back to the suspension offset.
+- Drop the esbuild bundle in favour of native browser ES modules, removing the build step from packaging.
+
+### Fixed
+
+- Advance to the next station automatically when a radio stream fails to open, errors mid-play, or hangs silently for six seconds, instead of leaving the kiosk silent; playback gives up only after the whole colour pool fails.
+- Suppress FLEX date/location header cells so grid rows never start with an indented gap; scenes created from the web UI with those headers are no longer adopted.
+- Tighten Settings modal spacing to fit 1080p screens without overflow.
+
+### Removed
+
+- Remove the startup behaviour setting (always resume where playback left off).
+
 ## [0.5.0] - 2026-08-05
 
 ### Added

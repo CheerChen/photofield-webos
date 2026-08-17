@@ -372,6 +372,13 @@ html, body {
 .kiosk-equalizer i { display:block; width:4px; height:100%; border-radius:2px; background:currentColor; transform-origin:bottom; animation:equalize .75s ease-in-out infinite; }
 .kiosk-equalizer i:nth-child(2) { animation-delay:.16s; }.kiosk-equalizer i:nth-child(3) { animation-delay:.31s; }
 .kiosk-equalizer.paused i { animation-play-state:paused; transform:scaleY(.28); opacity:.45; }
+/* Radio "connecting" state: the stream is still opening, so the bars pulse
+ * low and the label trails an animated ellipsis. */
+.kiosk-equalizer.loading i { animation:equalize-pulse 1.2s ease-in-out infinite; opacity:.7; }
+.kiosk-equalizer.loading i:nth-child(2) { animation-delay:.15s; }
+.kiosk-equalizer.loading i:nth-child(3) { animation-delay:.3s; }
+@keyframes equalize-pulse { 0%,100% { transform:scaleY(.22); opacity:.35; } 50% { transform:scaleY(.55); opacity:.85; } }
+.kiosk-music.loading .kiosk-music-name::after { content:"…"; display:inline-block; width:1.2em; text-align:left; animation:ellipsis 1.2s steps(4) infinite; overflow:hidden; vertical-align:bottom; }@keyframes ellipsis { 0% { width:0; } 100% { width:1.2em; } }
 .kiosk-loading {
   position: absolute;
   inset: 0;

@@ -48,7 +48,7 @@ A **purpose-built webOS TV client** for [Photofield](https://github.com/SmilyOrg
 - Talks to a self-hosted Photofield instance: auto-discovers photo sources, browses collections, views photos fullscreen
 - TV UI with remote D-pad focus navigation
 - Kiosk slideshow mode: configurable interval, fit and order
-- Bundled Lofi background music
+- Dual-source Lofi background music: bundled CC0 tracks or live radio streams
 - Photos and videos both use native system decoding — **no root required**
 
 The client ships empty: **no built-in photo sources**. Photos and videos come from your own Photofield instance.
@@ -67,9 +67,9 @@ See [Releases](https://github.com/CheerChen/photofield-webos/releases) and [CHAN
 | Viewer | Fullscreen viewing; keeps showing the latest requested photo while navigating during loads |
 | Video playback | Viewer and slideshow stream the untouched source with sound; falls back to the already-loaded preview when undecodable |
 | Slideshow playback | Configurable interval, fit mode and order; clock, capture details, reverse-geocoded locations and Ken Burns motion; inhibits the screensaver while playing |
-| Lofi background music | Colour keys switch four themed playlists, up/down keys change tracks; playlists shuffle to another colour when done; optional autoplay on kiosk entry |
+| Lofi background music | Two sources: bundled CC0 tracks, or 13 live radio stations grouped into four colour themes; colour keys switch themes, up/down keys change station; local playlists rotate colours when done, radio streams auto-advance on failure with volume fade in/out; optional autoplay on kiosk entry |
 | Remote navigation | Full D-pad / OK / Back coverage; play, pause, rewind, fast-forward and stop media keys; colour keys switch Lofi playlists |
-| Settings | Launch behaviour, interval, fit, order, information display, album sorting, media scope, Lofi autoplay, server address and instance rescan |
+| Settings | Interval, fit, order, information display, album sorting, media scope, Lofi autoplay and source, server address and instance rescan |
 
 ---
 
@@ -161,6 +161,7 @@ npm run test:e2e
 
 - [Photofield](https://github.com/SmilyOrg/photofield) — server / web UI
 - [open-lofi](https://github.com/btahir/open-lofi) — source of the bundled kiosk Lofi tracks (CC0 public domain)
+- [lofi-radio-web](https://github.com/88lin/lofi-radio-web) — station curation reference for the live radio source
 - [webosbrew](https://github.com/webosbrew) — webOS community tools and app repository
 
 ---
